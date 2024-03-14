@@ -129,7 +129,16 @@ Module Map (T:T) <: MapSpec (T).
     Lemma FindReplaceEq {e d} {f:e} (xs:@t e d) u  :
         @find e d (replace u f xs) u = f .
     Proof.
-    Admitted.
+        intros. induction xs.
+        + simpl. destruct (equal u u); auto.
+        - contradiction.
+        + simpl. destruct a. destruct (equal u v).
+        - simpl. destruct (equal u v); auto.
+        * contradiction.
+        - simpl. destruct (equal u v).
+        * contradiction.
+        * rewrite -> IHxs. reflexivity.
+        Qed.
 
     Lemma FindReplaceNeq {e d} {f:e} (xs:@t e d) u v  : u<>v -> 
         @find e d (replace v f xs) u = @find e d xs u .
