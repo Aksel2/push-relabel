@@ -97,12 +97,24 @@ Module Map (T:T) <: MapSpec (T).
     Lemma FindRemoveEq {e d} {f:e->e} (xs:@t e d) u  :  
         @find e d (remove u xs) u = d.
     Proof.
-    Admitted.
+        intros. induction xs.
+        + simpl. reflexivity.
+        + simpl. destruct a.
+        - destruct (equal u v).
+        * auto.
+        * simpl. rewrite -> eqb_neq; auto.
+        Qed.
 
     Lemma FindRemoveNeq {e d} (xs:@t e d) u v  : u<>v -> 
         @find e d (remove v xs) u = @find e d xs u .
     Proof.
-    Admitted.
+        intros. induction xs; auto.
+        simpl. destruct a. destruct (equal v v0).
+        + destruct (equal u v0).
+        - subst. contradiction.
+        - auto.
+        + simpl. rewrite -> IHxs. reflexivity.
+        Qed. 
 
     Lemma FindUpdateEq {e d} {f:e->e} (xs:@t e d) u  :
         @find e d (update u f xs) u = f (@find e d xs u) .
@@ -434,7 +446,26 @@ Module PR (T:T).
         ValidLabeling fn f l -> PushCondition fn f l x y
                 -> ValidLabeling fn (push fn f x y) l.
     Proof.
-    Admitted.
+        intros. destruct fn as [[[[vs es] c] s] t]. unfold ValidLabeling, PushCondition.
+        intros. unfold push in H1. destruct ((x, y) ∈e es) eqn : E.
+        + unfold PR.E in *. apply ESet.in_filter in H1. destruct H1.  
+        apply H. apply ESet.filter_in.
+        - auto.
+        - destruct (Edge.equal (x,y) (u, v)).
+        * inversion e. subst. rewrite EMap.FindUpdateEq in H2. 
+        eapply (reflect_iff _ _ (QLt_spec _ _)). 
+        eapply (reflect_iff _ _ (QLt_spec _ _)) in H2.
+        unfold res_cap in H2. rewrite E in H2.
+        destruct ( Q.min_dec (excess (vs, es, c, s, t) f u) (c u v - EMap.find f (u, v))).
+        ** rewrite q in H2. lra.
+        ** rewrite q in H2. unfold R in H2. lra.
+        * rewrite EMap.FindUpdateNeq in H2; auto.
+        + unfold PR.E in *. apply ESet.in_filter in H1. destruct H1.
+        destruct (Edge.equal (y, x) (u, v)).
+        - inversion e. subst. lia.
+        - rewrite EMap.FindUpdateNeq in H2; auto.
+        apply H. apply ESet.filter_in; auto.
+        Qed.
 
     Definition RelabelCondition fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u := 
       excess fn f u > 0 /\ forall v, res_cap fn f u v > 0 -> (l[u] <= l[v])%nat.
