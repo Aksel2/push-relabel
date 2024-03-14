@@ -412,7 +412,8 @@ Module PR (T:T).
         (v ∈v vs) = true -> excess fn f v > 0.
     
     Local Open Scope NMap.
-    Definition ValidLabeling  fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u v :=
+    Definition ValidLabeling  fn (f:@EMap.t Q 0) (l:@NMap.t nat O) :=
+        forall u v,
         let '((vs, es),c,s,t) := fn in
         ((u,v) ∈e E fn f) = true  ->  (l[u] <= l[v] + 1)%nat.
 
@@ -428,10 +429,10 @@ Module PR (T:T).
     Definition PushCondition fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u v := 
         excess fn f u > 0 /\ (l[u] = l[v] + 1)%nat.
     
-    Lemma PushValidLabel fn (f:@EMap.t Q 0) (l:@NMap.t nat O) x y u v:
+    Lemma PushValidLabel fn (f:@EMap.t Q 0) (l:@NMap.t nat O) x y:
         let '((vs, es),c,s,t) := fn in
-        ValidLabeling fn f l u v -> PushCondition fn f l x y
-                -> ValidLabeling fn (push fn f x y) l u v.
+        ValidLabeling fn f l -> PushCondition fn f l x y
+                -> ValidLabeling fn (push fn f x y) l.
     Proof.
     Admitted.
 
@@ -497,11 +498,10 @@ Module PR (T:T).
     Admitted.
 
 
-    Lemma RelabelValidLabel fn (f:@EMap.t Q 0) (l:@NMap.t nat O) x u v l':
-    let '((vs, es),c,s,t) := fn in
-        (v ∈v vs) = true ->
-        ValidLabeling fn f l u v -> RelabelCondition fn f l x 
-            -> relabel fn f l x = Some l' -> ValidLabeling fn f l' u v.
+    Lemma RelabelValidLabel fn (f:@EMap.t Q 0) (l:@NMap.t nat O) x l':
+        let '((vs, es),c,s,t) := fn in
+        ValidLabeling fn f l -> RelabelCondition fn f l x 
+            -> relabel fn f l x = Some l' -> ValidLabeling fn f l'.
     Proof.
     Admitted.
 
@@ -515,6 +515,10 @@ Module Nat <: T.
         induction x; destruct y; cbn; try constructor; auto.
         destruct (IHx y); subst; constructor; auto.
     Qed.
+    Lemma eqb_refl u: eqb u u = true.
+    Proof. destruct (equal u u); auto. Qed. 
+    Lemma eqb_neq u v: u<>v -> eqb u v = false.
+    Proof. intros. destruct (equal u v); auto. contradiction. Qed. 
 End Nat.
 
 Module PRNat := PR (Nat).
