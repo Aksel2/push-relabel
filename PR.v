@@ -119,13 +119,31 @@ Module Map (T:T) <: MapSpec (T).
     Lemma FindUpdateEq {e d} {f:e->e} (xs:@t e d) u  :
         @find e d (update u f xs) u = f (@find e d xs u) .
     Proof.
-    Admitted.
+        intros. induction xs.
+        + simpl. destruct (equal u u); auto.
+        - contradiction.
+        + simpl. destruct a. destruct (equal u v).
+        - simpl. subst v. destruct (equal u u); auto.
+        * rewrite -> FindRemoveNeq; auto.
+        -- contradiction.
+        - simpl. destruct (equal u v).
+        * subst. contradiction.
+        * rewrite -> IHxs. reflexivity.
+        Qed.
 
     Lemma FindUpdateNeq {e d} {f:e->e} (xs:@t e d) u v  : u<>v -> 
         @find e d (update v f xs) u = @find e d xs u .
     Proof.
-    Admitted.
-
+        intros. induction xs.
+        + simpl. destruct (equal u v); auto.
+        - contradiction.
+        + simpl. destruct a. destruct (equal v v0).
+        - simpl. subst. destruct (equal u v0).
+        * contradiction.
+        * rewrite -> FindRemoveNeq; auto.
+        -  simpl. destruct (equal u v0); auto.
+        Qed.
+    
     Lemma FindReplaceEq {e d} {f:e} (xs:@t e d) u  :
         @find e d (replace u f xs) u = f .
     Proof.
@@ -143,7 +161,15 @@ Module Map (T:T) <: MapSpec (T).
     Lemma FindReplaceNeq {e d} {f:e} (xs:@t e d) u v  : u<>v -> 
         @find e d (replace v f xs) u = @find e d xs u .
     Proof.
-    Admitted.
+        intros. induction xs.
+        + simpl. destruct (equal u v); auto.
+        - contradiction.
+        + simpl. destruct a. destruct (equal v v0).
+        - simpl. subst. rewrite -> eqb_neq; auto.
+        * rewrite -> FindRemoveNeq; auto. 
+        - simpl. destruct (equal u v0); auto.
+        Qed.
+        
 End Map.
 
 Module Type SetSpec (T:T).
