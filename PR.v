@@ -564,11 +564,11 @@ Module PR (T:T).
         - simpl in H2. destruct H2. 
         * destruct (equal v' a); auto.
         ** subst. assert (a ∈v (a :: vs'') = true). {simpl. rewrite eqb_refl; auto. } 
-        assert (l[v] <= l[r])%nat. { eapply IHvs' in H1. eauto. 
-        + apply H3. 
-        + intros. simpl in H4. destruct (equal v' a). subst; auto. specialize (H0 v' H4).
+        eapply IHvs' in H1; eauto.
+        intros. simpl in H4. destruct (equal v' a). subst; auto. specialize (H0 v' H4).
         apply Nat.leb_gt in E. lia.  
-        + right. simpl. destruct (equal r a); auto. }      
+        ** admit.
+        * admit.
     Admitted.
 
     Lemma RFindMinNoneCondition (l:@NMap.t nat O) vs': forall v, 
