@@ -214,7 +214,18 @@ Module MkSet (T:T) <: SetSpec (T).
     
     Lemma in_filter v (p:V->bool) s : (v ∈ (filter p s)) = true -> (v ∈ s)  = true  /\ p v = true.
     Proof.
-    Admitted.
+        intros. split.
+        + induction s; auto.
+         simpl in *. destruct (equal v a); auto.
+        - apply IHs. destruct (p a).
+        * simpl in *. rewrite eqb_neq in H; auto.
+        * auto.
+        + induction s.
+        - simpl in *. inversion H. 
+        - simpl in H. destruct (p a) eqn : e.
+        * simpl in *. destruct (equal v a); subst; auto.
+        * auto.  
+        Qed.
 
     Lemma filter_in v (p:V->bool) s : (v ∈ s)  = true -> p v = true -> (v ∈ (filter p s)) = true.
     Proof.
@@ -515,7 +526,18 @@ Module PR (T:T).
         (VSet.filter (fun v0 : V => 0 <? res_cap fn f u v0) vs) = vs' ->
         (v ∈v vs') = true ->  (0 <? res_cap fn f u v) = true .
     Proof.
-    Admitted.
+        induction vs; intros.
+        + simpl in H. subst. simpl in H0. inversion H0.
+        + simpl in H. destruct_guard_in H.
+        - destruct (vs').
+        * simpl in H0. inversion H0. 
+        * inversion H. simpl in H0. destruct (equal v v0).
+        ** subst. apply E0.
+        ** subst. eapply IHvs; auto.
+        - eapply IHvs.
+        * apply H.
+        * apply H0.
+        Qed. 
 
     
     Lemma RFindMinSomeCondition (l:@NMap.t nat O) vs': forall v r vs'', 
@@ -527,7 +549,26 @@ Module PR (T:T).
             | None => Some v0
             end) vs' (Some r) = Some v ->
         forall v', ((v' ∈v vs') = true\/(v' ∈v vs'') = true) -> (l[v] <= l[v'])%nat.
-    Proof.
+    Proof. 
+        induction vs'; intros.
+        + simpl in H1. inversion H1. subst. apply H0. destruct H2; auto.
+        simpl in H2. inversion H2.
+        + simpl in H1. destruct (l [r] <=? l [a])%nat eqn : E.
+        - simpl in H2. destruct H2. 
+        * destruct (equal v' a); auto.
+        ** subst. assert (l[v] <= l[r])%nat. { eapply IHvs' in H1; eauto. }
+        apply Nat.leb_le in E. lia.
+        ** eapply IHvs' in H1; eauto.
+        * assert (l[v] <= l[r])%nat. { eapply IHvs' in H1; eauto. }
+        specialize (H0 v' H2). lia.
+        - simpl in H2. destruct H2. 
+        * destruct (equal v' a); auto.
+        ** subst. assert (a ∈v (a :: vs'') = true). {simpl. rewrite eqb_refl; auto. } 
+        assert (l[v] <= l[r])%nat. { eapply IHvs' in H1. eauto. 
+        + apply H3. 
+        + intros. simpl in H4. destruct (equal v' a). subst; auto. specialize (H0 v' H4).
+        apply Nat.leb_gt in E. lia.  
+        + right. simpl. destruct (equal r a); auto. }      
     Admitted.
 
     Lemma RFindMinNoneCondition (l:@NMap.t nat O) vs': forall v, 
