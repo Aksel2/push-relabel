@@ -229,6 +229,11 @@ Module MkSet (T:T) <: SetSpec (T).
 
     Lemma filter_in v (p:V->bool) s : (v ∈ s)  = true -> p v = true -> (v ∈ (filter p s)) = true.
     Proof.
+        intros. induction s; auto.
+        simpl in *. destruct (p a).
+        + simpl. destruct (equal v a); auto.
+        + apply IHs. destruct (equal v a); auto.
+        - subst. admit. (*???*)
     Admitted.
 
     Definition fold_left {a:Type} (f:a -> V -> a) (xs:t) (x:a) := 
@@ -567,7 +572,7 @@ Module PR (T:T).
         eapply IHvs' in H1; eauto.
         intros. simpl in H4. destruct (equal v' a). subst; auto. specialize (H0 v' H4).
         apply Nat.leb_gt in E. lia.  
-        ** admit.
+        **  admit.
         * admit.
     Admitted.
 
