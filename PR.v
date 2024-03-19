@@ -232,8 +232,8 @@ Module MkSet (T:T) <: SetSpec (T).
         intros. induction s; auto.
         simpl in *. destruct (p a).
         + simpl. destruct (equal v a); auto.
-        + apply IHs. destruct (equal v a); auto.
-        - subst. admit. (*???*)
+        + destruct (equal v a); auto.
+        subst. apply IHs. admit. (*???*)
     Admitted.
 
     Definition fold_left {a:Type} (f:a -> V -> a) (xs:t) (x:a) := 
