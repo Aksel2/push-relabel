@@ -574,9 +574,21 @@ Module PR (T:T).
         eapply IHvs' in H1; eauto.
         intros. simpl in H4. destruct (equal v' a). subst; auto. specialize (H0 v' H4).
         apply Nat.leb_gt in E. lia.  
-        **  admit.
-        * admit.
-    Admitted.
+        ** eapply IHvs' in H1.
+        *** apply H1.
+        *** instantiate (1 := a::vs''). simpl. rewrite eqb_refl. reflexivity.
+        *** intros. simpl in H3.  destruct (equal v'0 a).
+        **** subst. lia. 
+        **** apply H0 in H3. apply Nat.leb_gt in E. lia. 
+        *** left. apply H2.
+        * eapply IHvs' in H1.
+        ** apply H1.
+        ** instantiate (1 := a::vs''). simpl. rewrite eqb_refl. reflexivity.
+        ** intros. simpl in H3.  destruct (equal v'0 a).
+        *** subst. lia. 
+        *** apply H0 in H3. apply Nat.leb_gt in E. lia. 
+        ** right. simpl. destruct (equal v' a); auto.
+    Qed.
 
     Lemma RFindMinNoneCondition (l:@NMap.t nat O) vs': forall v, 
         VSet.fold_left (fun r v0 => 
@@ -586,7 +598,17 @@ Module PR (T:T).
             end) vs' None = Some v ->
         forall v', ((v' ∈v vs') = true) -> (l[v] <= l[v'])%nat.
     Proof.
-    Admitted.
+        intros. induction vs'.
+        + simpl in H0. inversion H0.
+        + simpl in H. eapply (RFindMinSomeCondition _ _ _ a (a::nil)) in H.
+        - apply H.
+        - simpl. rewrite eqb_refl. reflexivity.
+        - intros. simpl in H1. destruct (equal v'0 a); subst. auto.
+        inversion H1.
+        - simpl in H0. destruct (equal v' a).
+        * subst. right. simpl. rewrite eqb_refl. reflexivity.
+        * left. apply H0.
+        Qed.
 
     Lemma RFindMinMemCondition (l:@NMap.t nat O) vs': forall v, 
         VSet.fold_left (fun r v0 => 
@@ -596,14 +618,29 @@ Module PR (T:T).
             end) vs' None = Some v ->
             (v ∈v vs') = true.
     Proof.
-    Admitted.
-        
+        intros. destruct vs'.
+        + simpl in H. inversion H.
+        + simpl in H. simpl. destruct (equal v v0); auto.
+        generalize dependent v0. induction vs'; intros.
+        - simpl in H. inversion H. destruct n. auto.
+        - simpl in H. destruct ((l [v0] <=? l [a])%nat) eqn : E.
+        * apply IHvs' in H; auto.  simpl. destruct (equal v a); auto.
+        * simpl. destruct (equal v a); auto. apply IHvs' in H.
+        ** simpl. destruct (equal v a); auto.
+        ** auto.
+        Qed. 
+
 
     Lemma RFindCondition fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u vs: forall v, 
       relabel_find fn f l u vs = Some v  ->
-      (0 <? res_cap fn f u v) = true /\ (forall v', (v' ∈v vs) = true -> (0 <? res_cap fn f u v') = true -> (l[v] <= l[v'])%nat).
+      (0 <? res_cap fn f u v) = true /\ (forall v', (v' ∈v vs) = true 
+        -> (0 <? res_cap fn f u v') = true -> (l[v] <= l[v'])%nat).
     Proof.
-    Admitted.
+        intros. unfold relabel_find in H. split.
+        + apply RFindMinMemCondition in H. eapply VSet.in_filter in H. destruct H; auto.
+        + intros. eapply RFindMinNoneCondition in H; eauto.
+        apply VSet.filter_in; auto.
+        Qed.
 
     Lemma RFindMemCondition fn f (l:@NMap.t nat O) u vs: forall v, 
         relabel_find fn f l u vs = Some v ->
@@ -617,6 +654,24 @@ Module PR (T:T).
         ValidLabeling fn f l -> RelabelCondition fn f l x 
             -> relabel fn f l x = Some l' -> ValidLabeling fn f l'.
     Proof.
+        intros. destruct fn as [[[[vs es] c] s] t]. unfold ValidLabeling, RelabelCondition.
+        intros. unfold relabel in H1. destruct_guard_in H1; [| inversion H1].
+        inversion H1. clear H1 H4. apply H in H2 as P. unfold PR.E in H2. 
+        apply ESet.in_filter in H2. destruct H2. destruct H0. 
+        apply RFindMemCondition in E0 as P1. apply RFindCondition in E0.
+        destruct E0. eapply (reflect_iff _ _ (QLt_spec _ _)) in H4. apply H3 in H4 as P2.
+        destruct (equal x u); destruct (equal x v); subst.
+        + erewrite -> NMap.FindReplaceEq. lia.
+        + erewrite -> NMap.FindReplaceEq; erewrite -> NMap.FindReplaceNeq. 
+        - admit.
+        - symmetry. auto.
+        + erewrite -> NMap.FindReplaceEq; erewrite -> NMap.FindReplaceNeq.
+        - lia.
+        - symmetry; auto.
+        + erewrite -> NMap.FindReplaceNeq. 
+        - erewrite -> NMap.FindReplaceNeq. lia. symmetry; auto.
+        - symmetry; auto.
+    
     Admitted.
 
 End PR.
