@@ -651,11 +651,12 @@ Module PR (T:T).
 
     Lemma RelabelValidLabel fn (f:@EMap.t Q 0) (l:@NMap.t nat O) x l':
         let '((vs, es),c,s,t) := fn in
+        (forall u v, ((u, v) ∈e es = true) -> (u ∈v vs) = true /\ (v ∈v vs) = true) ->
         ValidLabeling fn f l -> RelabelCondition fn f l x 
             -> relabel fn f l x = Some l' -> ValidLabeling fn f l'.
     Proof.
         intros. destruct fn as [[[[vs es] c] s] t]. unfold ValidLabeling, RelabelCondition.
-        intros. unfold relabel in H1. destruct_guard_in H1; [| inversion H1].
+        intros R. intros. unfold relabel in H1. destruct_guard_in H1; [| inversion H1].
         inversion H1. clear H1 H4. apply H in H2 as P. unfold PR.E in H2. 
         apply ESet.in_filter in H2. destruct H2. destruct H0. 
         apply RFindMemCondition in E0 as P1. apply RFindCondition in E0.
@@ -663,7 +664,9 @@ Module PR (T:T).
         destruct (equal x u); destruct (equal x v); subst.
         + erewrite -> NMap.FindReplaceEq. lia.
         + erewrite -> NMap.FindReplaceEq; erewrite -> NMap.FindReplaceNeq. 
-        - admit.
+        - assert ((l [v0]) <= l [v])%nat. { 
+            admit.
+        } lia.
         - symmetry. auto.
         + erewrite -> NMap.FindReplaceEq; erewrite -> NMap.FindReplaceNeq.
         - lia.
