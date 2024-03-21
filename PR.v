@@ -646,7 +646,12 @@ Module PR (T:T).
         relabel_find fn f l u vs = Some v ->
             (v ∈v vs) = true.
     Proof.
-    Admitted.
+        intros. unfold relabel_find in H. destruct vs.
+        + simpl in H. inversion H.
+        + simpl. destruct (equal v v0); auto.
+        - apply RFindMinMemCondition in H. eapply VSet.in_filter in H. destruct H; auto.
+        simpl in H. destruct (equal v v0); auto.
+        Qed.
 
 
     Lemma RelabelValidLabel fn (f:@EMap.t Q 0) (l:@NMap.t nat O) x l':
