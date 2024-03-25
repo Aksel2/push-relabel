@@ -750,7 +750,8 @@ Module PR (T:T).
             destruct fn as [[[[vs es] c] s] t]. unfold CapacityConstraint, NonDeficientFlowConstraint.
             intros. destruct H2. edestruct (Q.min_spec_le); destruct H4; rewrite H5; try lra.
             unfold res_cap. destruct ((u, v) ∈e es).
-            +  admit.
+            + admit.
+            + apply H0.
     Admitted.
 
     Lemma PushFlowMapPos fn (f:@EMap.t Q 0) (l:@NMap.t nat O) x y:
