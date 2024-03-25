@@ -278,6 +278,9 @@ Module PR (T:T).
     Definition Graph := (VSet.t * ESet.t)%type.
     Definition FlowNet := (Graph * (V -> V -> R) * V * V)%type.
 
+    Definition nodes (fn:FlowNet) := 
+        let '((vs, es),c,s,t) := fn in vs.
+
     Definition QLe (a b: Q): bool :=
         match Qlt_le_dec b a with
         | left _ => false
@@ -463,7 +466,7 @@ Module PR (T:T).
     
     Definition NonDeficientFlowConstraint (fn:FlowNet) (f:@EMap.t Q 0) := 
         let '((vs, es),c,s,t) := fn in
-        forall v, (v ∈v vs) = true -> v <> s -> 0 <= excess fn f v.
+        forall v, (v ∈v vs) = true -> 0 <= excess fn f v.
 
     Definition FlowConservationConstraint (fn:FlowNet) (f:@EMap.t Q 0) := 
         let '((vs, es),c,s,t) := fn in
@@ -471,7 +474,11 @@ Module PR (T:T).
     
     Definition PreFlowCond (fn:FlowNet) (f:@EMap.t Q 0) := 
             CapacityConstraint fn f /\ NonDeficientFlowConstraint fn f. 
-    
+
+    Definition FlowMapPositiveConstraint (fn:FlowNet) (f:@EMap.t Q 0) := 
+        let '((vs, es),c,s,t) := fn in
+        forall u v, f[(u,v)] >= 0 /\ c u v >= 0.
+            
     Definition ActiveNode (fn:FlowNet) (f:@EMap.t Q 0)v := 
         let '((vs, es),c,s,t) := fn in
         (v ∈v vs) = true -> excess fn f v > 0.
@@ -680,6 +687,42 @@ Module PR (T:T).
         - erewrite -> NMap.FindReplaceNeq. lia. symmetry; auto.
         - symmetry; auto.
     
+    Admitted.
+
+    Lemma FPNCondition fn f l u vs': 
+        (u ∈v nodes fn) = true -> forall v, 
+        ValidLabeling fn f l -> ActiveNode fn f u ->
+        find_push_node fn f l u vs' = Some v -> PushCondition fn f l u v.
+    Admitted.
+
+    Lemma SumSame (f:@EMap.t Q 0) (s:V->V*V) vs u v d : 
+        (forall v0, s v0 <> (u, v)) ->
+        map (fun v0 => @EMap.find Q 0 
+            (EMap.update (u, v) (fun x0 => x0 + d) f) 
+            (s v0)) vs = 
+        map (fun v0 => @EMap.find Q 0 f (s v0)) vs.
+    Admitted.
+    
+    Lemma PushActiveCondition (fn:FlowNet) (f:@EMap.t R 0) u v x: 
+        ActiveNode fn f x -> x<>v -> x<>u -> ActiveNode fn (push fn f u v) x .
+    Admitted.
+
+    Lemma DeltaPositive fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u v:
+        let '((vs, es),c,s,t) := fn in
+        (u ∈v vs) = true -> 
+        FlowMapPositiveConstraint fn f ->
+        PreFlowCond fn f -> 
+        PushCondition fn f l u v ->
+        Qmin (excess fn f u) (res_cap fn f u v) >= 0.
+    Admitted.
+
+    Lemma PushFlowMapPos fn (f:@EMap.t Q 0) (l:@NMap.t nat O) x y:
+        let '((vs, es),c,s,t) := fn in
+        (x ∈v vs) = true ->
+        FlowMapPositiveConstraint fn f -> 
+        PreFlowCond fn f ->
+        PushCondition fn f l x y ->
+        FlowMapPositiveConstraint fn (push fn f x y).
     Admitted.
 
 End PR.
