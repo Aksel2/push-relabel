@@ -676,8 +676,9 @@ Module PR (T:T).
         destruct (equal x u); destruct (equal x v); subst.
         + erewrite -> NMap.FindReplaceEq. lia.
         + erewrite -> NMap.FindReplaceEq; erewrite -> NMap.FindReplaceNeq. 
-        - assert ((l [v0]) <= l [v])%nat. { 
-            admit.
+        - assert ((l [v0]) <= l [v])%nat. { apply H5. + edestruct R; eauto. + unfold res_cap.
+        rewrite H1. eapply (reflect_iff _ _ (QLt_spec _ _)).
+        eapply (reflect_iff _ _ (QLt_spec _ _)) in H2. lra.
         } lia.
         - symmetry. auto.
         + erewrite -> NMap.FindReplaceEq; erewrite -> NMap.FindReplaceNeq.
@@ -686,14 +687,23 @@ Module PR (T:T).
         + erewrite -> NMap.FindReplaceNeq. 
         - erewrite -> NMap.FindReplaceNeq. lia. symmetry; auto.
         - symmetry; auto.
-    
-    Admitted.
+    Qed.
 
     Lemma FPNCondition fn f l u vs': 
         (u ∈v nodes fn) = true -> forall v, 
         ValidLabeling fn f l -> ActiveNode fn f u ->
         find_push_node fn f l u vs' = Some v -> PushCondition fn f l u v.
-    Admitted.
+        Proof.
+            unfold PushCondition, ValidLabeling, ActiveNode. intros. 
+            destruct fn as [[[[vs es] c] s] t]. split.
+            + apply H1; apply H.
+            + induction vs'. 
+            - simpl in H2; inversion H2.
+            - simpl in H2. destruct_guard_in H2.
+            * apply andb_prop in E0. destruct E0. inversion H2. subst.
+            eapply (reflect_iff _ _ (Nat.eqb_spec _ _)) in H3. lia.
+            * apply IHvs'. apply H2.
+            Qed.
 
     Lemma SumSame (f:@EMap.t Q 0) (s:V->V*V) vs u v d : 
         (forall v0, s v0 <> (u, v)) ->
@@ -701,11 +711,32 @@ Module PR (T:T).
             (EMap.update (u, v) (fun x0 => x0 + d) f) 
             (s v0)) vs = 
         map (fun v0 => @EMap.find Q 0 f (s v0)) vs.
-    Admitted.
+        Proof.
+            induction vs; intros.
+            + simpl. auto.
+            + simpl. erewrite IHvs; auto.
+            f_equal. clear IHvs. erewrite EMap.FindUpdateNeq.
+            - auto.
+            - apply H.
+            Qed.
     
     Lemma PushActiveCondition (fn:FlowNet) (f:@EMap.t R 0) u v x: 
         ActiveNode fn f x -> x<>v -> x<>u -> ActiveNode fn (push fn f u v) x .
-    Admitted.
+        Proof.
+            unfold ActiveNode. destruct fn as [[[[vs es] c] s] t]. intros.
+            unfold push. destruct ((u, v) ∈e es) eqn : E.
+            + unfold excess. set (d := Qmin _ _). rewrite SumSame.
+            - rewrite SumSame.
+            * apply H. apply H2.
+            * intros v0 q. inversion q. subst. apply H1. auto.
+            - intros v0 q. inversion q. subst. apply H0. auto. 
+            +  set (d := Qmin _ _). unfold excess. unfold Qminus. rewrite SumSame.
+            - rewrite SumSame.
+            * apply H. apply H2.
+            * intros v0 q. inversion q. subst. apply H0. auto.
+            - intros v0 q. inversion q. subst. apply H1. auto. 
+        Qed.
+
 
     Lemma DeltaPositive fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u v:
         let '((vs, es),c,s,t) := fn in
@@ -714,6 +745,12 @@ Module PR (T:T).
         PreFlowCond fn f -> 
         PushCondition fn f l u v ->
         Qmin (excess fn f u) (res_cap fn f u v) >= 0.
+        Proof.
+            unfold FlowMapPositiveConstraint, PreFlowCond, PushCondition.
+            destruct fn as [[[[vs es] c] s] t]. unfold CapacityConstraint, NonDeficientFlowConstraint.
+            intros. destruct H2. edestruct (Q.min_spec_le); destruct H4; rewrite H5; try lra.
+            unfold res_cap. destruct ((u, v) ∈e es).
+            +  admit.
     Admitted.
 
     Lemma PushFlowMapPos fn (f:@EMap.t Q 0) (l:@NMap.t nat O) x y:
