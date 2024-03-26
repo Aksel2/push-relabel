@@ -750,7 +750,7 @@ Module PR (T:T).
             destruct fn as [[[[vs es] c] s] t]. unfold CapacityConstraint, NonDeficientFlowConstraint.
             intros. destruct H2. edestruct (Q.min_spec_le); destruct H4; rewrite H5; try lra.
             unfold res_cap. destruct ((u, v) ∈e es).
-            + admit.
+            + destruct H1. admit.
             + apply H0.
     Admitted.
 
@@ -761,6 +761,12 @@ Module PR (T:T).
         PreFlowCond fn f ->
         PushCondition fn f l x y ->
         FlowMapPositiveConstraint fn (push fn f x y).
+        Proof.
+            unfold FlowMapPositiveConstraint, PreFlowCond, PushCondition.
+            unfold CapacityConstraint, NonDeficientFlowConstraint.
+            destruct fn as [[[[vs es] c] s] t]. intros. split.
+            + unfold push. destruct ((x, y) ∈e es) eqn : E.      
+            admit.        
     Admitted.
 
 End PR.
