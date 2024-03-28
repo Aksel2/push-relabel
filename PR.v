@@ -206,22 +206,53 @@ Module MkSet (T:T) <: SetSpec (T).
     Lemma MemAddEq (xs:t) v  :
         v ∈ (add v xs) = true.
     Proof.
-    Admitted.
+        intros. simpl. destruct (equal v v); auto.
+        Qed.
 
     Lemma MemRemoveEq (xs:t) u : 
         u ∈ (remove u xs) = false.
     Proof.
-    Admitted.
+        intros. induction xs; auto.
+        simpl. destruct (equal u a); auto.
+        simpl. destruct (equal u a); auto.
+        contradiction.
+        Qed.
 
     Lemma MemRemoveNeq (xs:t) u v  : u<>v -> 
         u ∈ (remove v xs) = u ∈ xs.
     Proof.
-    Admitted.
+        intros. induction xs; auto.
+        simpl. destruct (equal v a).
+        + subst. destruct (equal u a); auto.
+        + destruct (equal u a).
+        - subst. simpl. rewrite eqb_refl; auto.
+        - simpl. destruct (equal u a); auto.
+        subst. contradiction.
+        Qed.
 
     Lemma MemAddNeq (xs:t) u v  : u<>v -> 
         u ∈ (add v xs) = u ∈ xs.
     Proof.
-    Admitted.
+        intros. induction xs.
+        + simpl. destruct (equal u v); auto.
+        contradiction.
+        + simpl. destruct (equal u v).
+        - destruct (equal u a); auto.
+        subst. contradiction.
+        - destruct (equal v a).
+        * destruct (equal u a).
+        ** subst. contradiction.
+        ** subst. rewrite <- IHxs. inversion IHxs. destruct (equal u a).
+        *** subst. contradiction.
+        *** rewrite IHxs. apply H1.
+        * destruct (equal u a).
+        ** subst. simpl.  rewrite eqb_refl; auto.
+        ** simpl. destruct (equal u a).
+        *** subst. contradiction.
+        *** simpl in *. destruct (equal u v); auto.
+        subst. contradiction. 
+        Qed.
+        
 
     Definition choice s: option (V*t) := 
         match s with 
@@ -230,6 +261,7 @@ Module MkSet (T:T) <: SetSpec (T).
         end.
 
     Lemma choiceNone s: choice s = None <-> s=empty.
+    Proof.      
     Admitted.
 
     Fixpoint filter (p:V->bool) (xs:t) := 
@@ -272,36 +304,53 @@ Module MkSet (T:T) <: SetSpec (T).
         | ConsIsSet {a xs} : (a ∈ xs) = false -> IsSet xs -> IsSet (a::xs).
     
     Lemma EmptyIsSet: IsSet empty.
-    Proof. 
+    Proof.
     Admitted.
 
 
     Lemma RemoveOtherInFalse a b xs: a ∈ xs = false -> a ∈ remove b xs = false.
     Proof.
-    Admitted.
-
-
+        intros. induction xs; auto.
+        simpl. destruct (equal b a0).
+        + apply IHxs. subst. inversion H. destruct (equal a a0); auto.
+        inversion H1.
+        + simpl. destruct (equal a a0).
+        - subst. simpl in *. rewrite eqb_refl in H. inversion H.
+        - apply IHxs. simpl in *. destruct (equal a a0); auto.
+        subst. inversion H.
+    Qed. 
+    
     Lemma RemoveSameInFalse a xs: a ∈ remove a xs = false.
     Proof.
-    Admitted.
-    
+        intros. induction xs; auto.
+        simpl. destruct (equal a a0); auto.
+        simpl. destruct (equal a a0); auto.
+        subst. contradiction.
+        Qed.   
 
     Lemma RemoveIsSet a xs: IsSet xs -> IsSet (remove a xs).
     Proof. 
     Admitted.
 
     Lemma AddIsSet a xs: IsSet xs -> IsSet (add a xs).
-    Proof. 
+    Proof.
     Admitted.
 
-
     Lemma ChoiceIsSet a xs: IsSet xs -> forall xs', choice xs = Some (a, xs') -> IsSet xs'.
-    Proof. 
+    Proof.
     Admitted.
 
     Lemma FilterOtherInFalse a f xs: a ∈ xs = false -> a ∈ filter f xs = false.
     Proof. 
-    Admitted.
+        intros. induction xs; auto.
+        simpl. destruct (f a0) eqn : E.
+        + simpl. destruct (equal a a0).
+        - subst. simpl in *. rewrite eqb_refl in H. inversion H.
+        - apply IHxs. simpl in *. destruct (equal a a0); auto.
+        subst. inversion H.
+        + apply IHxs. simpl in *. destruct (equal a a0); auto.
+        subst. inversion H.
+        Qed.
 
     Lemma filterIsSet f xs: IsSet xs -> IsSet (filter f xs).
     Proof.
