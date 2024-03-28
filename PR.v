@@ -26,6 +26,7 @@ Ltac destruct_guard :=
         let e := fresh "E" in destruct X eqn: e
     end.
 
+Ltac inv_clear H := inversion H; subst; clear H.
 
 Module Type T.
     Parameter V: Type.
@@ -201,11 +202,36 @@ Module MkSet (T:T) <: SetSpec (T).
         end.
 
     Notation "v ∈ s" := (mem v s) (at level 12). 
+
+    Lemma MemAddEq (xs:t) v  :
+        v ∈ (add v xs) = true.
+    Proof.
+    Admitted.
+
+    Lemma MemRemoveEq (xs:t) u : 
+        u ∈ (remove u xs) = false.
+    Proof.
+    Admitted.
+
+    Lemma MemRemoveNeq (xs:t) u v  : u<>v -> 
+        u ∈ (remove v xs) = u ∈ xs.
+    Proof.
+    Admitted.
+
+    Lemma MemAddNeq (xs:t) u v  : u<>v -> 
+        u ∈ (add v xs) = u ∈ xs.
+    Proof.
+    Admitted.
+
     Definition choice s: option (V*t) := 
         match s with 
         | nil => None
         | v :: s => Some (v,s)
         end.
+
+    Lemma choiceNone s: choice s = None <-> s=empty.
+    Admitted.
+
     Fixpoint filter (p:V->bool) (xs:t) := 
         match xs with
         | nil => nil
@@ -240,6 +266,52 @@ Module MkSet (T:T) <: SetSpec (T).
 
     Definition fold_left {a:Type} (f:a -> V -> a) (xs:t) (x:a) := 
         fold_left f xs x.
+
+    Inductive IsSet : t -> Prop :=
+        | NilIsSet: IsSet nil
+        | ConsIsSet {a xs} : (a ∈ xs) = false -> IsSet xs -> IsSet (a::xs).
+    
+    Lemma EmptyIsSet: IsSet empty.
+    Proof. 
+    Admitted.
+
+
+    Lemma RemoveOtherInFalse a b xs: a ∈ xs = false -> a ∈ remove b xs = false.
+    Proof.
+    Admitted.
+
+
+    Lemma RemoveSameInFalse a xs: a ∈ remove a xs = false.
+    Proof.
+    Admitted.
+    
+
+    Lemma RemoveIsSet a xs: IsSet xs -> IsSet (remove a xs).
+    Proof. 
+    Admitted.
+
+    Lemma AddIsSet a xs: IsSet xs -> IsSet (add a xs).
+    Proof. 
+    Admitted.
+
+
+    Lemma ChoiceIsSet a xs: IsSet xs -> forall xs', choice xs = Some (a, xs') -> IsSet xs'.
+    Proof. 
+    Admitted.
+
+    Lemma FilterOtherInFalse a f xs: a ∈ xs = false -> a ∈ filter f xs = false.
+    Proof. 
+    Admitted.
+
+    Lemma filterIsSet f xs: IsSet xs -> IsSet (filter f xs).
+    Proof.
+    Admitted.
+
+    Lemma choiceSome s: forall a s', 
+    IsSet s ->
+    choice s = Some (a,s') -> a ∈ s=true /\ s'=remove a s /\ IsSet s'.
+    Proof.
+    Admitted.
 End MkSet.
 
 
@@ -281,6 +353,9 @@ Module PR (T:T).
     Definition nodes (fn:FlowNet) := 
         let '((vs, es),c,s,t) := fn in vs.
 
+    Definition sink (fn:FlowNet) := 
+        let '((vs, es),c,s,t) := fn in t.        
+    
     Definition QLe (a b: Q): bool :=
         match Qlt_le_dec b a with
         | left _ => false
@@ -304,6 +379,13 @@ Module PR (T:T).
     Proof.
         unfold QLt. destruct_guard; constructor; lra.
     Qed.
+
+    Lemma QLt_false x y: (x <? y)%Q = false <-> y<=x .
+    Proof. unfold QLt. destruct (Qlt_le_dec x y); split; intros.
+    all: auto.
+    all: try inversion H. lra.
+    Qed.
+
 
     Definition QSumList :=
         fold_right Qplus 0 .
@@ -401,13 +483,13 @@ Module PR (T:T).
         | RelabelFailed
         .
 
-    Fixpoint gpr_helper_trace fn f l ac g tr : (@EMap.t Q 0*list Tr) :=
+    Fixpoint gpr_helper_trace fn f l ac g tr : (option (@EMap.t Q 0)*list Tr) :=
         let '((vs, es),c,s,t) := fn in
         match g with
-        | O => (f, OutOfGas::tr)
+        | O => (None, OutOfGas::tr)
         | S g' => 
             match VSet.choice ac with
-            | None => (f,tr)
+            | None => (Some f,tr)
             | Some (u,ac') =>
             match find_push_node fn f l u vs with
             | Some v =>
@@ -417,16 +499,47 @@ Module PR (T:T).
                     let ac'' := VSet.add v ac' in
                     gpr_helper_trace fn f' l ac'' g' (Push u v f' ac''::tr)
                 else 
-                    gpr_helper_trace fn f' l ac' g' (Push u v f' ac'::tr)
+                    let ac'' := VSet.remove v ac' in
+                    gpr_helper_trace fn f' l ac'' g' (Push u v f' ac'::tr)
             | None =>
                 match relabel fn f l u with
-                | None => (f, RelabelFailed::tr)
+                | None => (Some f, RelabelFailed::tr)
                 | Some l' =>
                     gpr_helper_trace fn f l' ac g' (Relabel u (l'[u]) l'::tr)
                 end
             end
             end 
         end.
+    
+    Lemma gpr_helper_trace_fn fn f l ac g tr : 
+        gpr_helper_trace fn f l ac g tr =
+            let '((vs, es),c,s,t) := fn in
+            match g with
+            | O => (None, OutOfGas::tr)
+            | S g' => 
+                match VSet.choice ac with
+                | None => (Some f,tr)
+                | Some (u,ac') =>
+                match find_push_node fn f l u vs with
+                | Some v =>
+                    let f' := push fn f u v in
+                    let ac' := if 0 <? (excess fn f' u) then ac else ac' in
+                    if has_excess_not_sink fn f' v  then 
+                        let ac'' := VSet.add v ac' in
+                        gpr_helper_trace fn f' l ac'' g' (Push u v f' ac''::tr)
+                    else 
+                        let ac'' := VSet.remove v ac' in
+                        gpr_helper_trace fn f' l ac'' g' (Push u v f' ac'::tr)
+                | None =>
+                    match relabel fn f l u with
+                    | None => (Some f, RelabelFailed::tr)
+                    | Some l' =>
+                        gpr_helper_trace fn f l' ac g' (Relabel u (l'[u]) l'::tr)
+                    end
+                end
+                end 
+            end.
+    Proof. destruct g; auto. Qed.
 
     Local Close Scope NMap.
     Fixpoint initial_push fn f ac es: (@EMap.t Q 0*list V)  :=
@@ -451,7 +564,7 @@ Module PR (T:T).
 
 
     Local Open Scope NMap.
-    Definition gpr_trace (fn:FlowNet) : (@EMap.t Q 0*list Tr) :=
+    Definition gpr_trace (fn:FlowNet) : (option (@EMap.t Q 0)*list Tr) :=
         let '((vs, es),c,s,t) := fn in
         let labels := NMap.replace s (length vs) (NMap.empty O) in
         let bound := (length es * length vs * length vs)%nat in
@@ -466,7 +579,7 @@ Module PR (T:T).
     
     Definition NonDeficientFlowConstraint (fn:FlowNet) (f:@EMap.t Q 0) := 
         let '((vs, es),c,s,t) := fn in
-        forall v, (v ∈v vs) = true -> 0 <= excess fn f v.
+        forall v, (v ∈v vs) = true -> v<>s -> 0 <= excess fn f v.
 
     Definition FlowConservationConstraint (fn:FlowNet) (f:@EMap.t Q 0) := 
         let '((vs, es),c,s,t) := fn in
@@ -706,7 +819,7 @@ Module PR (T:T).
             Qed.
 
     Lemma SumSame (f:@EMap.t Q 0) (s:V->V*V) vs u v d : 
-        (forall v0, s v0 <> (u, v)) ->
+        (forall v0,  v0 ∈v vs = true -> s v0 <> (u, v)) ->
         map (fun v0 => @EMap.find Q 0 
             (EMap.update (u, v) (fun x0 => x0 + d) f) 
             (s v0)) vs = 
@@ -717,7 +830,8 @@ Module PR (T:T).
             + simpl. erewrite IHvs; auto.
             f_equal. clear IHvs. erewrite EMap.FindUpdateNeq.
             - auto.
-            - apply H.
+            - apply H. cbn. rewrite eqb_refl. auto.
+            - intros. apply H. cbn. destruct_guard; auto.
             Qed.
     
     Lemma PushActiveCondition (fn:FlowNet) (f:@EMap.t R 0) u v x: 
@@ -728,13 +842,13 @@ Module PR (T:T).
             + unfold excess. set (d := Qmin _ _). rewrite SumSame.
             - rewrite SumSame.
             * apply H. apply H2.
-            * intros v0 q. inversion q. subst. apply H1. auto.
-            - intros v0 q. inversion q. subst. apply H0. auto. 
+            * intros v0 _ q. inversion q. subst. apply H1. auto.
+            - intros v0 _ q. inversion q. subst. apply H0. auto. 
             +  set (d := Qmin _ _). unfold excess. unfold Qminus. rewrite SumSame.
             - rewrite SumSame.
             * apply H. apply H2.
-            * intros v0 q. inversion q. subst. apply H0. auto.
-            - intros v0 q. inversion q. subst. apply H1. auto. 
+            * intros v0 _ q. inversion q. subst. apply H0. auto.
+            - intros v0 _ q. inversion q. subst. apply H1. auto. 
         Qed.
 
 
@@ -767,6 +881,78 @@ Module PR (T:T).
             destruct fn as [[[[vs es] c] s] t]. intros. split.
             + unfold push. destruct ((x, y) ∈e es) eqn : E.      
             admit.        
+    Admitted.
+
+
+    Lemma SumInR (f:@EMap.t Q 0) vs u v d : 
+        VSet.IsSet vs ->
+        u ∈v vs = true ->
+        QSumList (
+            map (fun v0 => @EMap.find Q 0 
+                  (EMap.update (u, v) (fun x0 => x0 + d) f) 
+                  (v0, v)) vs) == 
+        QSumList (map (fun v0 => @EMap.find Q 0 f (v0, v)) vs) + d.
+    Proof.
+    Admitted.
+
+    Lemma SumInL (f:@EMap.t Q 0) vs: forall u v d,
+        VSet.IsSet vs ->
+        v ∈v vs = true ->
+        QSumList (
+            map (fun v0 => @EMap.find Q 0 
+                  (EMap.update (u, v) (fun x0 => x0 + d) f) 
+                  (u,v0)) vs) == 
+        QSumList (map (fun v0 => @EMap.find Q 0 f (u,v0)) vs) + d.
+    Proof.
+    Admitted.
+
+    (* pikk tõestus paljude hargnemistega. 
+        * Qmin-ist saab lahti kasutades Q.min_spec 
+        * summade puhul Sum* (enne vastavad destruct (equal x y)...) *)
+    Lemma PushPreFlow fn (f:@EMap.t Q 0) (l:@NMap.t nat O) x y:
+        let '((vs, es),c,s,t) := fn in
+        VSet.IsSet vs ->
+        (x ∈v vs) = true ->
+        (y ∈v vs) = true ->
+        PreFlowCond fn f -> 
+        FlowMapPositiveConstraint fn f ->
+        PushCondition fn f l x y->
+        PreFlowCond fn (push fn f x y).
+    Proof.
+    Admitted.
+
+
+    Lemma FPNinVs fn f l u v vs': 
+    find_push_node fn f l u vs' = Some v -> (v ∈v vs') = true.
+    Proof.
+    Admitted.
+
+    Lemma HENSCondition fn v :forall (f:@EMap.t Q 0),
+        has_excess_not_sink fn f v = true -> 0 < excess fn f v /\ v <> sink fn.
+    Proof.
+    Admitted.
+
+    Lemma PushActiveInv (fn:FlowNet) (f:@EMap.t R 0) u v x: 
+        x<>v ->
+        ActiveNode fn (push fn f u v) x ->
+        ActiveNode fn f x.
+    Proof.
+    Admitted.
+
+    Lemma FlowConservationGpr fn g:forall (f:@EMap.t Q 0) (l:@NMap.t nat O) ac tr,
+        let '((vs, es),c,s,t) := fn in
+        VSet.IsSet vs ->
+        VSet.IsSet ac ->
+        (forall n, n ∈v ac = true -> n ∈v vs = true) ->
+        ValidLabeling fn f l ->
+        (forall n, n ∈v ac = true <-> ActiveNode fn f n) ->
+        PreFlowCond fn f ->
+        FlowMapPositiveConstraint fn f ->
+        forall f' tr', 
+        gpr_helper_trace fn f l ac g tr = (Some f',tr') ->
+        (forall n, ActiveNode fn f' n -> False) /\ 
+        FlowConservationConstraint fn f'.
+    Proof.
     Admitted.
 
 End PR.
