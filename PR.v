@@ -354,6 +354,7 @@ Module MkSet (T:T) <: SetSpec (T).
 
     Lemma filterIsSet f xs: IsSet xs -> IsSet (filter f xs).
     Proof.
+        intros.
     Admitted.
 
     Lemma choiceSome s: forall a s', 
@@ -978,7 +979,19 @@ Module PR (T:T).
                   (u,v0)) vs) == 
         QSumList (map (fun v0 => @EMap.find Q 0 f (u,v0)) vs) + d.
     Proof.
-    Admitted.
+        induction vs; intros.
+        + simpl. inversion H0.
+        + simpl. destruct (equal v a).
+        - subst. rewrite EMap.FindUpdateEq. erewrite SumSame.
+        * unfold R in *. lra.
+        * intros. intro C. inv_clear C. inv_clear H. rewrite H1 in H4. inversion H4.
+        - rewrite EMap.FindUpdateNeq.
+        * erewrite IHvs.
+        ** lra.
+        ** inversion H. subst. auto.
+        ** simpl in H0. rewrite eqb_neq in H0; auto.
+        * intro C. inv_clear C. apply n. reflexivity.
+        Qed.
 
     (* pikk tõestus paljude hargnemistega. 
         * Qmin-ist saab lahti kasutades Q.min_spec 
