@@ -329,8 +329,15 @@ Module MkSet (T:T) <: SetSpec (T).
         Qed.   
 
     Lemma RemoveIsSet a xs: IsSet xs -> IsSet (remove a xs).
-    Proof. 
-    Admitted.
+    Proof.
+        intros. induction xs; auto.
+        simpl. destruct (equal a a0). 
+        + subst. apply IHxs. inversion H. subst. apply H3.
+        + inversion H. subst. apply ConsIsSet. 
+        - rewrite <- H2. apply MemRemoveNeq.
+        intro C. inv_clear C. contradiction.
+        - auto.
+         Qed.
 
     Lemma AddIsSet a xs: IsSet xs -> IsSet (add a xs).
     Proof.
@@ -354,7 +361,6 @@ Module MkSet (T:T) <: SetSpec (T).
 
     Lemma filterIsSet f xs: IsSet xs -> IsSet (filter f xs).
     Proof.
-        intros.
     Admitted.
 
     Lemma choiceSome s: forall a s', 
