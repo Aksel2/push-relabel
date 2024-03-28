@@ -863,10 +863,10 @@ Module PR (T:T).
             unfold FlowMapPositiveConstraint, PreFlowCond, PushCondition.
             destruct fn as [[[[vs es] c] s] t]. unfold CapacityConstraint, NonDeficientFlowConstraint.
             intros. destruct H2. edestruct (Q.min_spec_le); destruct H4; rewrite H5; try lra.
-            unfold res_cap. destruct ((u, v) ∈e es).
-            + destruct H1. admit.
+            unfold res_cap. destruct ((u, v) ∈e es) eqn : E.
+            + destruct H1. specialize (H1 _ _ E). unfold R in *. lra.
             + apply H0.
-    Admitted.
+            Qed.
 
     Lemma PushFlowMapPos fn (f:@EMap.t Q 0) (l:@NMap.t nat O) x y:
         let '((vs, es),c,s,t) := fn in
@@ -879,9 +879,22 @@ Module PR (T:T).
             unfold FlowMapPositiveConstraint, PreFlowCond, PushCondition.
             unfold CapacityConstraint, NonDeficientFlowConstraint.
             destruct fn as [[[[vs es] c] s] t]. intros. split.
-            + unfold push. destruct ((x, y) ∈e es) eqn : E.      
-            admit.        
-    Admitted.
+            + unfold push. destruct ((x, y) ∈e es) eqn : E.
+            - destruct (Edge.equal (x,y) (u,v)).
+            * inv_clear e. rewrite EMap.FindUpdateEq.
+            eapply (DeltaPositive ((vs, es),c,s,t)) in H2; auto.
+            specialize (H0 u v). lra.
+            * rewrite EMap.FindUpdateNeq; auto.
+            apply H0.
+            - destruct (Edge.equal (y,x) (u,v)).
+            * inv_clear e. rewrite EMap.FindUpdateEq.
+            unfold res_cap. rewrite E. edestruct (Q.min_spec_le); destruct H3.
+            ** erewrite H4. unfold R in *. lra.
+            ** erewrite H4. unfold R in *. lra.
+            * rewrite EMap.FindUpdateNeq; auto.
+             apply H0.
+             + apply H0.
+         Qed.        
 
 
     Lemma SumInR (f:@EMap.t Q 0) vs u v d : 
@@ -892,8 +905,20 @@ Module PR (T:T).
                   (EMap.update (u, v) (fun x0 => x0 + d) f) 
                   (v0, v)) vs) == 
         QSumList (map (fun v0 => @EMap.find Q 0 f (v0, v)) vs) + d.
-    Proof.
-    Admitted.
+    Proof. 
+        induction vs; intros.
+        + simpl. inversion H0.
+        + simpl. destruct (equal u a).
+        - subst. rewrite EMap.FindUpdateEq. erewrite SumSame.
+        * unfold R in *. lra.
+        * intros. intro C. inv_clear C. inv_clear H. rewrite H1 in H4. inversion H4.
+        - rewrite EMap.FindUpdateNeq.
+        * erewrite IHvs.
+        ** lra.
+        ** inversion H. auto.
+        ** simpl in H0. rewrite eqb_neq in H0; auto.
+        * intro C. inv_clear C. apply n. reflexivity.
+        Qed. 
 
     Lemma SumInL (f:@EMap.t Q 0) vs: forall u v d,
         VSet.IsSet vs ->
@@ -919,6 +944,28 @@ Module PR (T:T).
         PushCondition fn f l x y->
         PreFlowCond fn (push fn f x y).
     Proof.
+        unfold PreFlowCond, FlowMapPositiveConstraint, PushCondition, PreFlowCond.
+        unfold CapacityConstraint, NonDeficientFlowConstraint.
+        destruct fn as [[[[vs es] c] s] t].
+        intros Hvs Hxvs Hyvs [Hcc Hndf] Hfmp Hpc.
+        split.
+        + intros. unfold push. destruct ((x, y) ∈e es) eqn : E.
+        - destruct (Edge.equal (x,y) (u,v)). 
+        * inv_clear e. rewrite EMap.FindUpdateEq. unfold res_cap.
+        rewrite E. edestruct (Q.min_spec_le); destruct H0.
+        ** erewrite H1. unfold R in *. lra.
+        ** erewrite H1. unfold R in *. lra.
+        * rewrite EMap.FindUpdateNeq; auto.
+        - unfold res_cap. rewrite E. destruct (Edge.equal (y,x) (u,v)).
+        * inv_clear e. rewrite EMap.FindUpdateEq. edestruct (Q.min_spec_le); destruct H0.
+        ** erewrite H1. specialize (Hcc _ _ H). lra.
+        ** rewrite H1. specialize (Hfmp u v). unfold R in *. lra.
+        * rewrite EMap.FindUpdateNeq; auto.
+        + intros. unfold push, res_cap. destruct ((x, y) ∈e es) eqn : E.
+        - unfold excess at 1. destruct (equal v y). 
+        * subst. destruct (equal x y).
+        ** subst. rewrite SumInR; auto.
+        rewrite SumInL; auto. 
     Admitted.
 
 
