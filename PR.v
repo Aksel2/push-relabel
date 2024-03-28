@@ -961,11 +961,21 @@ Module PR (T:T).
         ** erewrite H1. specialize (Hcc _ _ H). lra.
         ** rewrite H1. specialize (Hfmp u v). unfold R in *. lra.
         * rewrite EMap.FindUpdateNeq; auto.
-        + intros. unfold push, res_cap. destruct ((x, y) ∈e es) eqn : E.
+        + intros. eapply (DeltaPositive ((vs, es),c,s,t)) in Hpc as HDp; auto;
+        [| unfold PreFlowCond, CapacityConstraint, NonDeficientFlowConstraint; tauto].        
+        unfold push, res_cap in *. destruct ((x, y) ∈e es) eqn : E.
         - unfold excess at 1. destruct (equal v y). 
         * subst. destruct (equal x y).
         ** subst. rewrite SumInR; auto.
-        rewrite SumInL; auto. 
+        rewrite SumInL; auto. destruct Hpc. unfold excess in H1.
+        unfold R in *. lra.
+        ** rewrite SumInR; auto. 
+        rewrite SumSame.
+        **** specialize (Hndf y H H0). unfold excess in Hndf.
+         unfold R in *. lra.
+         **** intros. intro C. inv_clear C. apply n. reflexivity.
+         * admit.
+         - admit.
     Admitted.
 
 
