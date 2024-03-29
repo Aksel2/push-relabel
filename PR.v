@@ -340,7 +340,12 @@ Module MkSet (T:T) <: SetSpec (T).
          Qed.
 
     Lemma AddIsSet a xs: IsSet xs -> IsSet (add a xs).
-    Proof.
+    Proof. 
+        intros. induction xs. 
+        + unfold add. simpl. apply ConsIsSet; auto.
+        + unfold add. simpl. destruct (equal a a0).
+        - subst. inversion H. subst. auto.
+        - inversion H. subst. 
     Admitted.
 
     Lemma ChoiceIsSet a xs: IsSet xs -> forall xs', choice xs = Some (a, xs') -> IsSet xs'.
