@@ -362,7 +362,6 @@ Module MkSet (T:T) <: SetSpec (T).
 
     Lemma ChoiceIsSet a xs: IsSet xs -> forall xs', choice xs = Some (a, xs') -> IsSet xs'.
     Proof.
-        intros. 
     Admitted.
 
     Lemma FilterOtherInFalse a f xs: a ∈ xs = false -> a ∈ filter f xs = false.
@@ -379,7 +378,13 @@ Module MkSet (T:T) <: SetSpec (T).
 
     Lemma filterIsSet f xs: IsSet xs -> IsSet (filter f xs).
     Proof.
-    Admitted.
+        intros. induction xs; auto.
+        simpl. destruct (f a). 
+        + apply ConsIsSet.
+        - apply FilterOtherInFalse. inversion H. auto.
+        - inversion H. subst. apply IHxs. apply H3.
+        + inversion H. subst. apply IHxs. apply H3.
+        Qed.
 
     Lemma choiceSome s: forall a s', 
     IsSet s ->
@@ -1125,8 +1130,8 @@ Module PR (T:T).
         unfold ActiveNode, push. destruct fn as [[[[vs es] c] s] t].
         intros. destruct_guard_in H0.
         + apply H0 in H1. clear H0. unfold res_cap in H1. rewrite E0 in H1.
-        unfold excess in *. 
-        
+        unfold excess in *.
+        destruct (equal x v) in H1.
 
     Admitted.
 
