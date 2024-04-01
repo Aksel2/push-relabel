@@ -261,8 +261,14 @@ Module MkSet (T:T) <: SetSpec (T).
         end.
 
     Lemma choiceNone s: choice s = None <-> s=empty.
-    Proof.      
-    Admitted.
+    Proof.
+        intros. induction s.
+        + split; auto.
+        + split.
+        - destruct IHs. simpl in *.
+        intros. inversion H1.
+        - intros. inversion H.
+        Qed.
 
     Fixpoint filter (p:V->bool) (xs:t) := 
         match xs with
@@ -305,7 +311,8 @@ Module MkSet (T:T) <: SetSpec (T).
     
     Lemma EmptyIsSet: IsSet empty.
     Proof.
-    Admitted.
+        apply NilIsSet.
+    Qed.
 
 
     Lemma RemoveOtherInFalse a b xs: a ∈ xs = false -> a ∈ remove b xs = false.
@@ -345,11 +352,17 @@ Module MkSet (T:T) <: SetSpec (T).
         + unfold add. simpl. apply ConsIsSet; auto.
         + unfold add. simpl. destruct (equal a a0).
         - subst. inversion H. subst. auto.
-        - inversion H. subst. 
-    Admitted.
+        - inversion H. subst. apply ConsIsSet.
+        * simpl. rewrite eqb_neq; auto.
+        apply RemoveSameInFalse.
+        * apply ConsIsSet.
+        ** apply RemoveOtherInFalse. apply H2.
+        ** apply RemoveIsSet. apply H3.
+        Qed.
 
     Lemma ChoiceIsSet a xs: IsSet xs -> forall xs', choice xs = Some (a, xs') -> IsSet xs'.
     Proof.
+        intros. 
     Admitted.
 
     Lemma FilterOtherInFalse a f xs: a ∈ xs = false -> a ∈ filter f xs = false.
@@ -1047,26 +1060,74 @@ Module PR (T:T).
         **** specialize (Hndf y H H0). unfold excess in Hndf.
          unfold R in *. lra.
          **** intros. intro C. inv_clear C. apply n. reflexivity.
-         * admit.
-         - admit.
-    Admitted.
+         * unfold excess in Hpc. destruct (equal x v). 
+         ** subst. rewrite SumSame. 
+         *** erewrite SumInL; auto.
+          edestruct (Q.min_spec_le); destruct H1.
+         **** erewrite H2 in *. unfold excess. unfold R in *. lra.
+         **** erewrite H2 in *. unfold excess in H1. unfold R in *. lra.
+         *** intros. intro C. inv_clear C. apply n. reflexivity.
+         ** rewrite SumSame, SumSame.
+         *** apply Hndf in H; auto.
+         *** intros. intro C. inv_clear C. apply n0. reflexivity.
+         *** intros. intro C. inv_clear C. apply n. reflexivity.  
+         - unfold excess. unfold Qminus. destruct (equal v x).
+         * subst. destruct (equal x y).
+         ** subst. erewrite SumInL; auto.
+         erewrite SumInR; auto.
+         unfold excess in Hpc. unfold R in *. lra.
+         ** erewrite SumInR; auto.
+         erewrite SumSame.
+         *** unfold excess in Hpc, HDp.
+         edestruct (Q.min_spec_le); destruct H1.
+         **** erewrite H2 in *. unfold R in *. lra.
+         **** erewrite H2 in *. unfold R in *. lra.
+         *** intros. intro C. inv_clear C. apply n. reflexivity.
+         * destruct (equal v y).
+         ** subst. erewrite SumInL; auto.
+         rewrite SumSame.
+         *** apply Hndf in H; auto.
+         unfold excess in H. unfold excess, Qminus in HDp. unfold R in *. lra.
+        *** intros. intro C. inv_clear C. apply n. reflexivity.
+        ** erewrite SumSame, SumSame.
+        *** apply Hndf in H; auto.
+        *** intros. intro C. inv_clear C. apply n0. reflexivity.
+        *** intros. intro C. inv_clear C. apply n. reflexivity.
+        Qed.
 
 
     Lemma FPNinVs fn f l u v vs': 
     find_push_node fn f l u vs' = Some v -> (v ∈v vs') = true.
     Proof.
-    Admitted.
+        destruct fn as [[[[vs es] c] s] t]. induction vs'; intros.
+        + simpl in H. inversion H.
+        + simpl in H. destruct_guard_in H.
+        - inversion H. subst. simpl. rewrite eqb_refl. reflexivity.
+        - simpl. destruct (equal v a); auto.
+        Qed.
 
     Lemma HENSCondition fn v :forall (f:@EMap.t Q 0),
         has_excess_not_sink fn f v = true -> 0 < excess fn f v /\ v <> sink fn.
     Proof.
-    Admitted.
+        unfold has_excess_not_sink. destruct fn as [[[[vs es] c] s] t].
+        intros. destruct (equal v t) in H. subst.
+        + inversion H.
+        + destruct_guard_in H.
+        - eapply (reflect_iff _ _ (QLt_spec _ _)) in E0. split; auto.
+        - inversion H. 
+    Qed.
 
     Lemma PushActiveInv (fn:FlowNet) (f:@EMap.t R 0) u v x: 
         x<>v ->
         ActiveNode fn (push fn f u v) x ->
         ActiveNode fn f x.
     Proof.
+        unfold ActiveNode, push. destruct fn as [[[[vs es] c] s] t].
+        intros. destruct_guard_in H0.
+        + apply H0 in H1. clear H0. unfold res_cap in H1. rewrite E0 in H1.
+        unfold excess in *. 
+        
+
     Admitted.
 
     Lemma FlowConservationGpr fn g:forall (f:@EMap.t Q 0) (l:@NMap.t nat O) ac tr,
