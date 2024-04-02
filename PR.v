@@ -395,15 +395,16 @@ Module MkSet (T:T) <: SetSpec (T).
     Proof.
         intros. induction s.
         + inversion H0.
-        + split. 
-        - inversion H. subst. inversion H0. subst. simpl in *. rewrite eqb_refl. 
-        reflexivity.
+        + split.
+        - simpl. destruct (equal a a0); auto.
+        inversion H0. subst. contradiction.
         - split.
-        * inversion H. subst. inversion H0. subst. simpl. rewrite eqb_refl.
-        simpl in *. apply IHs; auto. 
-        admit.
-        * inversion H. inversion H0. subst. apply H4.
-    Admitted.
+        * simpl. destruct (equal a a0).
+        ** subst. simpl in *. inversion H. subst. apply IHs; auto.
+        rewrite <- H0. inversion H0. subst s'. admit.
+        ** simpl in *. inversion H0. subst. contradiction.
+        * inversion H. subst. inversion H0. subst. auto.
+        Admitted.
 End MkSet.
 
 
