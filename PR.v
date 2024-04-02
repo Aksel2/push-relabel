@@ -362,7 +362,7 @@ Module MkSet (T:T) <: SetSpec (T).
 
     Lemma ChoiceIsSet a xs: IsSet xs -> forall xs', choice xs = Some (a, xs') -> IsSet xs'.
     Proof.
-    Admitted.
+     Admitted.
 
     Lemma FilterOtherInFalse a f xs: a ∈ xs = false -> a ∈ filter f xs = false.
     Proof. 
@@ -1132,6 +1132,14 @@ Module PR (T:T).
         + apply H0 in H1. clear H0. unfold res_cap in H1. rewrite E0 in H1.
         unfold excess in *.
         destruct (equal x v) in H1.
+        - erewrite SumSame, SumSame in H1.
+        * subst. unfold R in *. lra.
+        * subst. intros. intro C. inv_clear C. apply H. reflexivity.
+        * intros. subst. intro C. inv_clear C. apply H. reflexivity.
+        - erewrite SumSame, SumSame in H1.
+        * unfold R in *. lra.
+        * intros. intro C. inv_clear C. admit.
+        * intros. intro C. inv_clear C. apply H. reflexivity.
 
     Admitted.
 
