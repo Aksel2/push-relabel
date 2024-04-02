@@ -362,7 +362,10 @@ Module MkSet (T:T) <: SetSpec (T).
 
     Lemma ChoiceIsSet a xs: IsSet xs -> forall xs', choice xs = Some (a, xs') -> IsSet xs'.
     Proof.
-     Admitted.
+        intros. induction xs.
+        + inversion H0.
+        + inversion H. subst. inversion H0. subst. apply H4.
+    Qed.
 
     Lemma FilterOtherInFalse a f xs: a ∈ xs = false -> a ∈ filter f xs = false.
     Proof. 
@@ -390,6 +393,17 @@ Module MkSet (T:T) <: SetSpec (T).
     IsSet s ->
     choice s = Some (a,s') -> a ∈ s=true /\ s'=remove a s /\ IsSet s'.
     Proof.
+        intros. induction s.
+        + inversion H0.
+        + split.
+        - simpl in *. destruct (equal a a0); auto.
+        inversion H. subst. inversion H0. subst. contradiction.
+        - split.
+        * simpl in *. inversion H0. subst. rewrite eqb_refl. inversion H. subst.
+        apply IHs; auto. admit.
+
+        * inversion H. inversion H0. subst. apply H4. 
+
     Admitted.
 End MkSet.
 
