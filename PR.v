@@ -393,18 +393,23 @@ Module MkSet (T:T) <: SetSpec (T).
     IsSet s ->
     choice s = Some (a,s') -> a ∈ s=true /\ s'=remove a s /\ IsSet s'.
     Proof.
-        intros. induction s.
+        induction s; intros. 
         + inversion H0.
         + split.
-        - simpl. destruct (equal a a0); auto.
-        inversion H0. subst. contradiction.
+        - simpl. destruct (equal a0 a). 
+        * subst. auto.
+        * inversion H. subst. simpl in H0. inversion H0. 
+        subst. contradiction.
         - split.
-        * simpl. destruct (equal a a0).
-        ** subst. simpl in *. inversion H. subst. apply IHs; auto.
-        rewrite <- H0. inversion H0. subst s'. admit.
-        ** simpl in *. inversion H0. subst. contradiction.
-        * inversion H. subst. inversion H0. subst. auto.
-        Admitted.
+        * simpl. destruct (equal a a0). 
+        ** subst. rewrite eqb_refl. simpl in *. 
+        inversion H. inversion H0. subst. clear -H3.
+        induction s'; auto.  simpl in *. destruct (equal a0 a).
+        *** inversion H3.
+        *** rewrite <- IHs'; auto.
+        ** rewrite eqb_neq; auto. simpl in *. inversion H0. contradiction.
+        * simpl in *. inversion H0. inversion H. subst. auto.
+        Qed.
 End MkSet.
 
 
@@ -1174,13 +1179,34 @@ Module PR (T:T).
         
     Lemma FPNConditionNone fn f l u vs': 
         find_push_node fn f l u vs' = None -> 
-        forall v, v ∈v vs' = true -> (0 <? res_cap fn f u v = false) \/ (l[u] <> l[v] + 1)%nat.
+        forall v, v ∈v vs' = true -> (0 <? res_cap fn f u v = false) 
+        \/ (l[u] <> l[v] + 1)%nat.
     Proof.
-    Admitted.
+        induction vs'; intros.
+        + inversion H0.
+        + simpl in *. destruct fn as [[[[vs es] c] s] t]. 
+        destruct (equal v a) in H0. subst.
+        - clear H0. destruct_guard_in H.
+        * inversion H.
+        * apply andb_false_iff in E0. destruct E0.
+        ** apply Nat.eqb_neq in H0. right. lia.
+        ** left. auto.
+        - destruct_guard_in H.
+        * inversion H.
+        * eapply IHvs' in H; eauto.
+        Qed. 
+
     Lemma HENSConditionFalse fn v :forall (f:@EMap.t Q 0),
         has_excess_not_sink fn f v = false -> 0 >= excess fn f v \/ v = sink fn.
     Proof.
-    Admitted.
+        unfold has_excess_not_sink.
+        intros. destruct fn as [[[[vs es] c] s] t].
+        destruct (equal v t). subst.
+        + clear H. right. auto.
+        + destruct_guard_in H.
+        - inversion H.
+        - clear H. apply QLt_false in E0. tauto.
+        Qed.
 
     Lemma FlowConservationGpr fn g:forall (f:@EMap.t Q 0) (l:@NMap.t nat O) ac tr,
         let '((vs, es),c,s,t) := fn in
@@ -1196,8 +1222,20 @@ Module PR (T:T).
         (forall n, ActiveNode fn f' n -> False) /\ 
         FlowConservationConstraint fn f'.
     Proof.
-    Admitted.
+        destruct fn as [[[[vs es] c] s] t]. induction g;
+        intros f l ac tr Hvs Hac Hinac Hvl Hnan Hpfc Hfmpc f' tr' H.
+        + simpl in H. inversion H.
+        + simpl in H. destruct_guard_in H.
+        - admit.
+        - inversion H. apply VSet.choiceNone in E0. subst. split.
+        * intros. apply Hnan in H0. inversion H0.
+        * unfold FlowConservationConstraint. intros.
+        unfold PreFlowCond in Hpfc. destruct Hpfc.
+        apply H4 in H0 as P1. specialize (P1 H1).
+        destruct (excess (vs, es, c, s, t) f' v =? 0). admit.
 
+    Admitted.
+(*intros Hvs Hxvs Hyvs [Hcc Hndf] Hfmp Hpc.*)
 End PR.
 
 Module Nat <: T.
