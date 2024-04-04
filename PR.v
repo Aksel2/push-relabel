@@ -1172,6 +1172,16 @@ Module PR (T:T).
         * intros. intro C. inv_clear C. apply n. reflexivity.
         Qed.
         
+    Lemma FPNConditionNone fn f l u vs': 
+        find_push_node fn f l u vs' = None -> 
+        forall v, v ∈v vs' = true -> (0 <? res_cap fn f u v = false) \/ (l[u] <> l[v] + 1)%nat.
+    Proof.
+    Admitted.
+    Lemma HENSConditionFalse fn v :forall (f:@EMap.t Q 0),
+        has_excess_not_sink fn f v = false -> 0 >= excess fn f v \/ v = sink fn.
+    Proof.
+    Admitted.
+
     Lemma FlowConservationGpr fn g:forall (f:@EMap.t Q 0) (l:@NMap.t nat O) ac tr,
         let '((vs, es),c,s,t) := fn in
         VSet.IsSet vs ->
