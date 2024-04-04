@@ -1136,27 +1136,42 @@ Module PR (T:T).
         - inversion H. 
     Qed.
 
-    Lemma PushActiveInv (fn:FlowNet) (f:@EMap.t R 0) u v x: 
+    Lemma PushActiveInv (fn:FlowNet) (f:@EMap.t R 0) (l:@NMap.t nat O) u v x:
+        VSet.IsSet (nodes fn) ->
+        u ∈v nodes fn = true ->
+        v ∈v nodes fn = true ->
         x<>v ->
+        PreFlowCond fn f ->
+        FlowMapPositiveConstraint fn f ->
+        PushCondition fn f l u v ->
         ActiveNode fn (push fn f u v) x ->
         ActiveNode fn f x.
     Proof.
-        unfold ActiveNode, push. destruct fn as [[[[vs es] c] s] t].
-        intros. destruct_guard_in H0.
-        + apply H0 in H1. clear H0. unfold res_cap in H1. rewrite E0 in H1.
+        unfold ActiveNode, push, PreFlowCond, 
+        FlowConservationConstraint, PushCondition.
+        destruct fn as [[[[vs es] c] s] t].
+        intros. destruct_guard_in H6.
+        + apply H6 in H7. clear H6. unfold res_cap in H7. rewrite E0 in H7.
         unfold excess in *.
-        destruct (equal x v) in H1.
-        - erewrite SumSame, SumSame in H1.
-        * subst. unfold R in *. lra.
-        * subst. intros. intro C. inv_clear C. apply H. reflexivity.
-        * intros. subst. intro C. inv_clear C. apply H. reflexivity.
-        - erewrite SumSame, SumSame in H1.
+        destruct (equal x u) in H7.
+        - subst. erewrite SumSame, SumInL in H7; auto.
         * unfold R in *. lra.
-        * intros. intro C. inv_clear C. admit.
-        * intros. intro C. inv_clear C. apply H. reflexivity.
-
-    Admitted.
-
+        * intros. intro C. inv_clear C. apply H2. reflexivity.
+        - erewrite SumSame, SumSame in H7.
+        * unfold R in *. lra.
+        * intros. intro C. inv_clear C. apply n. reflexivity.
+        * intros. intro C. inv_clear C. apply H2. reflexivity.
+        + apply H6 in H7. clear H6. unfold res_cap in H7. rewrite E0 in H7.
+        unfold excess in *. unfold Qminus in *. set (d:= Qmin _ _) in *.
+        destruct (equal x u) in H7.
+        - subst. erewrite SumInR, SumSame in H7; auto.
+        * unfold R in *. lra.
+        * intros. intro C. inv_clear C. apply H2. reflexivity.
+        - erewrite SumSame, SumSame in H7; auto.
+        * intros. intro C. inv_clear C. apply H2. reflexivity.
+        * intros. intro C. inv_clear C. apply n. reflexivity.
+        Qed.
+        
     Lemma FlowConservationGpr fn g:forall (f:@EMap.t Q 0) (l:@NMap.t nat O) ac tr,
         let '((vs, es),c,s,t) := fn in
         VSet.IsSet vs ->
