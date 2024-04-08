@@ -708,7 +708,18 @@ Module PR (T:T).
     Definition NoAugPath (fn:FlowNet) (f:@EMap.t Q 0) := 
         let '((vs, es),c,s,t) := fn in
         CPath fn f s t -> False.
-    
+
+    Definition NoSteepArc (fn:FlowNet) (f:@EMap.t Q 0) (l:@NMap.t nat O):=
+        forall u v,
+        res_cap fn f u v > 0 -> (l[u] <= l[v]+1)%nat.
+
+    Definition ResCapNodes (fn:FlowNet) (f:@EMap.t Q 0) :=
+            forall u v,
+            res_cap fn f u v > 0 -> u ∈v (nodes fn) = true /\ v ∈v (nodes fn) = true.
+
+    Definition NoPushCondition fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u := 
+                forall v, v ∈v (nodes fn) = true -> (l[u] <> l[v] + 1)%nat.
+        
     Definition PushCondition fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u v := 
         excess fn f u > 0 /\ (l[u] = l[v] + 1)%nat.
     
@@ -1208,21 +1219,58 @@ Module PR (T:T).
         - clear H. apply QLt_false in E0. tauto.
         Qed.
 
+    Lemma PushNoSteepArc fn f l x y:
+        (x ∈v nodes fn) = true -> 
+        FlowMapPositiveConstraint fn f ->
+        PreFlowCond fn f -> 
+        PushCondition fn f l x y ->
+        NoSteepArc fn f l -> NoSteepArc fn (push fn f x y) l.
+    Proof.
+    Admitted.
+
+    Lemma PushResCapNodes fn f x y:        
+        x ∈v (nodes fn) = true -> y ∈v (nodes fn) = true ->
+        ResCapNodes fn f -> ResCapNodes fn (push fn f x y).
+    Proof.
+    Admitted.
+    
+    Lemma RelabelNoSteepArc fn f l x:
+        (x ∈v nodes fn) = true -> 
+        ResCapNodes fn f ->
+        find_push_node fn f l x (nodes fn) = None ->
+        NoSteepArc fn f l -> 
+        forall l', relabel fn f l x = Some l' -> NoSteepArc fn f l'.
+    Proof.
+    Admitted.
+
+    Lemma RelabelValidCondition fn f l u : 
+        ActiveNode fn f u ->
+        NoSteepArc fn f l ->
+        find_push_node fn f l u (nodes fn) = None -> 
+        forall v,
+        relabel_find fn f l u (nodes fn) = Some v -> 
+        RelabelCondition fn f l u.
+    Proof.
+    Admitted.
+
     Lemma FlowConservationGpr fn g:forall (f:@EMap.t Q 0) (l:@NMap.t nat O) ac tr,
         let '((vs, es),c,s,t) := fn in
+        (forall u v, ((u, v) ∈e es = true) -> (u ∈v vs) = true /\ (v ∈v vs) = true) ->
         VSet.IsSet vs ->
         VSet.IsSet ac ->
+        ResCapNodes fn f ->
+        NoSteepArc fn f l ->
         (forall n, n ∈v ac = true -> n ∈v vs = true) ->
         ValidLabeling fn f l ->
-        (forall n, n ∈v ac = true <-> ActiveNode fn f n) ->
+        (forall n, n ∈v ac = true <-> (ActiveNode fn f n /\ n<>t)) ->
         PreFlowCond fn f ->
         FlowMapPositiveConstraint fn f ->
         forall f' tr', 
         gpr_helper_trace fn f l ac g tr = (Some f',tr') ->
-        (forall n, ActiveNode fn f' n -> False) /\ 
+        (forall n, ActiveNode fn f' n -> n=t) /\ 
         FlowConservationConstraint fn f'.
-    Proof.
-        destruct fn as [[[[vs es] c] s] t]. induction g;
+    Proof.        
+        (* destruct fn as [[[[vs es] c] s] t]. induction g;
         intros f l ac tr Hvs Hac Hinac Hvl Hnan Hpfc Hfmpc f' tr' H.
         + simpl in H. inversion H.
         + simpl in H. destruct_guard_in H.
@@ -1232,7 +1280,7 @@ Module PR (T:T).
         * unfold FlowConservationConstraint. intros.
         unfold PreFlowCond in Hpfc. destruct Hpfc.
         apply H4 in H0 as P1. specialize (P1 H1).
-        destruct (excess (vs, es, c, s, t) f' v =? 0). admit.
+        destruct (excess (vs, es, c, s, t) f' v =? 0). admit. *)
 
     Admitted.
 (*intros Hvs Hxvs Hyvs [Hcc Hndf] Hfmp Hpc.*)
