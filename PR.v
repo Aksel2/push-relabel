@@ -692,7 +692,7 @@ Module PR (T:T).
             
     Definition ActiveNode (fn:FlowNet) (f:@EMap.t Q 0)v := 
         let '((vs, es),c,s,t) := fn in
-        (v ∈v vs) = true -> excess fn f v > 0.
+        (v ∈v vs) = true /\ excess fn f v > 0.
     
     Local Open Scope NMap.
     Definition ValidLabeling  fn (f:@EMap.t Q 0) (l:@NMap.t nat O) :=
@@ -950,12 +950,12 @@ Module PR (T:T).
             unfold push. destruct ((u, v) ∈e es) eqn : E.
             + unfold excess. set (d := Qmin _ _). rewrite SumSame.
             - rewrite SumSame.
-            * apply H. apply H2.
+            * apply H. 
             * intros v0 _ q. inversion q. subst. apply H1. auto.
             - intros v0 _ q. inversion q. subst. apply H0. auto. 
             +  set (d := Qmin _ _). unfold excess. unfold Qminus. rewrite SumSame.
             - rewrite SumSame.
-            * apply H. apply H2.
+            * apply H.
             * intros v0 _ q. inversion q. subst. apply H0. auto.
             - intros v0 _ q. inversion q. subst. apply H1. auto. 
         Qed.
@@ -1167,7 +1167,7 @@ Module PR (T:T).
         FlowConservationConstraint, PushCondition.
         destruct fn as [[[[vs es] c] s] t].
         intros. destruct_guard_in H6.
-        + apply H6 in H7. clear H6. unfold res_cap in H7. rewrite E0 in H7.
+        + destruct H6. split; auto. 
         unfold excess in *.
         destruct (equal x u) in H7.
         - subst. erewrite SumSame, SumInL in H7; auto.
@@ -1177,7 +1177,7 @@ Module PR (T:T).
         * unfold R in *. lra.
         * intros. intro C. inv_clear C. apply n. reflexivity.
         * intros. intro C. inv_clear C. apply H2. reflexivity.
-        + apply H6 in H7. clear H6. unfold res_cap in H7. rewrite E0 in H7.
+        + destruct H6. split; auto. 
         unfold excess in *. unfold Qminus in *. set (d:= Qmin _ _) in *.
         destruct (equal x u) in H7.
         - subst. erewrite SumInR, SumSame in H7; auto.
@@ -1226,13 +1226,56 @@ Module PR (T:T).
         PushCondition fn f l x y ->
         NoSteepArc fn f l -> NoSteepArc fn (push fn f x y) l.
     Proof.
-    Admitted.
+        unfold FlowMapPositiveConstraint, PreFlowCond, PushCondition,
+        NoSteepArc. unfold CapacityConstraint, NonDeficientFlowConstraint.
+        destruct fn as [[[[vs es] c] s] t].
+        intros. unfold push in H4. set (d:= Qmin _ _) in H4. 
+        destruct ((x, y) ∈e es) eqn : E.
+        + unfold res_cap in H4. destruct ((u, v) ∈e es) eqn : E2.
+        - destruct (Edge.equal (u, v) (x, y)).
+        * inv_clear e. lia.
+        * apply H3. unfold res_cap. rewrite E2. rewrite EMap.FindUpdateNeq in H4; auto.
+        - destruct (Edge.equal (v, u) (x, y)).
+        * inv_clear e. lia.
+        * rewrite EMap.FindUpdateNeq in H4; auto. 
+        apply H3. unfold res_cap. rewrite E2. auto.
+        + unfold res_cap in H4. destruct ((u, v) ∈e es) eqn : E2.
+        - destruct (Edge.equal (u, v) (y, x)).
+        * inv_clear e. lia.
+        * rewrite EMap.FindUpdateNeq in H4; auto.
+        apply H3. unfold res_cap. rewrite E2. auto.
+        - destruct (Edge.equal (v, u) (y, x)).
+        * inv_clear e. lia.
+        * rewrite EMap.FindUpdateNeq in H4; auto.
+        apply H3. unfold res_cap. rewrite E2. auto.
+        Qed.
 
     Lemma PushResCapNodes fn f x y:        
         x ∈v (nodes fn) = true -> y ∈v (nodes fn) = true ->
         ResCapNodes fn f -> ResCapNodes fn (push fn f x y).
     Proof.
-    Admitted.
+        unfold ResCapNodes.
+        intros. unfold push in H2. destruct fn as [[[[vs es] c] s] t].
+        set (d:= Qmin _ _) in H2. destruct ((x, y) ∈e es) eqn : E.
+        + unfold res_cap in H2. destruct ((u, v) ∈e es) eqn : E2.
+        - destruct (Edge.equal (u, v) (x, y)).
+        * inv_clear e. tauto.
+        * rewrite EMap.FindUpdateNeq in H2; auto.
+        apply H1. unfold res_cap. rewrite E2. auto.
+        -  destruct (Edge.equal (v, u) (x, y)).
+        * inv_clear e. tauto.
+        * rewrite EMap.FindUpdateNeq in H2; auto.
+        apply H1. unfold res_cap. rewrite E2. auto.
+        + unfold res_cap in H2. destruct ((u, v) ∈e es) eqn : E2.
+        - destruct (Edge.equal (u, v) (y, x)).
+        * inv_clear e. tauto.
+        * rewrite EMap.FindUpdateNeq in H2; auto.
+        apply H1. unfold res_cap. rewrite E2. auto.
+        - destruct (Edge.equal (v, u) (y, x)).
+        * inv_clear e. tauto.
+        * rewrite EMap.FindUpdateNeq in H2; auto.
+        apply H1. unfold res_cap. rewrite E2. auto.
+        Qed.
     
     Lemma RelabelNoSteepArc fn f l x:
         (x ∈v nodes fn) = true -> 
@@ -1241,6 +1284,21 @@ Module PR (T:T).
         NoSteepArc fn f l -> 
         forall l', relabel fn f l x = Some l' -> NoSteepArc fn f l'.
     Proof.
+        unfold ResCapNodes, NoSteepArc, relabel.
+        destruct fn as [[[[vs es] c] s] t].
+        intros. destruct_guard_in H3; [| inversion H3].
+        inv_clear H3. apply RFindCondition in E0.
+        destruct (equal x u), (equal x v).
+        + subst. rewrite NMap.FindReplaceEq. lia.
+        + subst. rewrite NMap.FindReplaceEq. rewrite NMap.FindReplaceNeq; auto.
+        destruct E0. apply H0 in H4 as P. destruct P as [P1 P2].
+        eapply (reflect_iff _ _ (QLt_spec _ _)) in H4.
+        apply H5 in H4; auto. lia.
+        + subst. rewrite NMap.FindReplaceEq. rewrite NMap.FindReplaceNeq; auto.
+        destruct E0 as [E1 E2]. apply H0 in H4 as P. destruct P as [P1 P2].
+        apply H2 in H4. eapply FPNConditionNone in H1.
+        - destruct H1.        
+
     Admitted.
 
     Lemma RelabelValidCondition fn f l u : 
