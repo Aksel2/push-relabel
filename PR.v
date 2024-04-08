@@ -1298,8 +1298,8 @@ Module PR (T:T).
         destruct E0 as [E1 E2]. eapply (reflect_iff _ _ (QLt_spec _ _)) in E1. 
         apply H0 in E1 as P. destruct P as [P1 P2]. 
         apply H2 in H4. apply H2 in E1. lia.
-        + admit.
-    Admitted.
+        + rewrite NMap.FindReplaceNeq; auto. rewrite NMap.FindReplaceNeq; auto.
+        Qed.
 
     Lemma RelabelValidCondition fn f l u : 
         ActiveNode fn f u ->
@@ -1309,6 +1309,9 @@ Module PR (T:T).
         relabel_find fn f l u (nodes fn) = Some v -> 
         RelabelCondition fn f l u.
     Proof.
+        unfold ActiveNode, NoSteepArc, RelabelCondition.
+        destruct fn as [[[[vs es] c] s] t]. intros.
+
     Admitted.
 
     Lemma FlowConservationGpr fn g:forall (f:@EMap.t Q 0) (l:@NMap.t nat O) ac tr,
