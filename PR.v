@@ -1295,8 +1295,12 @@ Module PR (T:T).
         eapply (reflect_iff _ _ (QLt_spec _ _)) in H4.
         apply H5 in H4; auto. lia.
         + subst. rewrite NMap.FindReplaceEq. rewrite NMap.FindReplaceNeq; auto.
-        destruct E0 as [E1 E2]. apply H0 in H4 as P. destruct P as [P1 P2].
-        apply H2 in H4. eapply FPNConditionNone in H1.
+        destruct E0 as [E1 E2]. eapply (reflect_iff _ _ (QLt_spec _ _)) in E1. 
+        apply H0 in E1 as P. destruct P as [P1 P2]. 
+        apply H2 in H4. destruct ((0 <? res_cap (vs, es, c, s, t) f v u)) eqn : E.
+        - eapply E2 in E; auto. 
+        
+         eapply FPNConditionNone in H1.
         - destruct H1.        
 
     Admitted.
