@@ -1297,11 +1297,8 @@ Module PR (T:T).
         + subst. rewrite NMap.FindReplaceEq. rewrite NMap.FindReplaceNeq; auto.
         destruct E0 as [E1 E2]. eapply (reflect_iff _ _ (QLt_spec _ _)) in E1. 
         apply H0 in E1 as P. destruct P as [P1 P2]. 
-        apply H2 in H4.
-         eapply FPNConditionNone in H1.
-        - destruct H1.
-        * admit.        
-
+        apply H2 in H4. apply H2 in E1. lia.
+        + admit.
     Admitted.
 
     Lemma RelabelValidCondition fn f l u : 
