@@ -1396,6 +1396,94 @@ Module PR (T:T).
 
     Admitted.
 (*intros Hvs Hxvs Hyvs [Hcc Hndf] Hfmp Hpc.*)
+
+    (* sama nagu SumSameUpdate *)
+    Lemma SumSameReplace (f:@EMap.t Q 0) (s:V->V*V) vs u v d : 
+        (forall v0, v0 ∈v vs = true -> s v0 <> (u, v)) ->
+        map (fun v0 => @EMap.find Q 0 
+            (EMap.replace (u, v) d f) 
+            (s v0)) vs = 
+        map (fun v0 => @EMap.find Q 0 f (s v0)) vs.
+    Proof.
+    Admitted.
+
+    (* equal y s, siis equal n y, siis equal a s  *)
+    Lemma NDFinitial vs es c s t d  y n f: 
+        EMap.find f (s,y) <= d ->
+        n<>s ->
+        excess (vs, es, c, s, t) f n <= 
+            excess (vs, es, c, s, t) (EMap.replace (s, y) d f) n .
+    Proof.
+    Admitted. 
+
+    (* ind. üle vs *)
+    Lemma SourceDeficient vs es c s t y f: 
+        (forall a, @EMap.find R 0 f (a,s) <= @EMap.find R 0 f (s,a)) ->
+        EMap.find f (s,y) <= c s y ->
+        excess (vs, es, c, s, t) (EMap.replace (s, y) (c s y) f) s <= 0.
+    Proof.
+    Admitted.
+
+    (* väga lühike, kuna võrratused antud. Ind. üle vs.  *)
+    Lemma ExcessSame vs es c s t y f n: 
+        (forall a, EMap.find f (a,s) <= EMap.find f (s,a)) ->
+        EMap.find f (s,y) <= c s y ->
+        n<>s ->
+        n<>y ->
+        excess (vs, es, c, s, t) f n  == excess (vs, es, c, s, t) (EMap.replace (s, y) (c s y) f) n.
+    Proof.
+    Admitted.
+
+    (* induktsioon üle es'  *)
+    Lemma InitialGpr fn :
+        let '((vs, es),c,s,t) := fn in
+        (forall u v, ((u, v) ∈e es = true) -> (u ∈v vs) = true /\ (v ∈v vs) = true) ->
+        VSet.IsSet vs ->
+        forall es' f f' ac ac' ,
+        (forall n, n ∈e es' = true -> n ∈e es = true) ->
+        VSet.IsSet ac ->
+        (forall a, EMap.find f (a,s) <= EMap.find f (s,a)) ->
+        (excess fn f s <= 0) ->
+        ResCapNodes fn f ->
+        (forall n, n ∈v ac = true -> n ∈v vs = true) ->
+        (forall n, n ∈v ac = true <-> (ActiveNode fn f n /\ n<>t)) ->
+        PreFlowCond fn f ->
+        FlowMapPositiveConstraint fn f ->
+        initial_push fn f ac es' = (f',ac') ->
+        VSet.IsSet ac' /\
+        ResCapNodes fn f' /\
+        (forall n, n ∈v ac' = true -> n ∈v vs = true) /\
+        (forall n, n ∈v ac' = true <-> (ActiveNode fn f' n /\ n<>t)) /\
+        PreFlowCond fn f' /\
+        FlowMapPositiveConstraint fn f'.
+    Proof.
+    Admitted.
+
+    (* e' on juba töödeldud servade hulk.
+       induktsioon üle e'', 
+        kui e'' = a::e''', siis kasuta ihs (e':= add a e')  *)
+    Lemma InitialPushResCap0 vs es c s t e'' : forall e' f f' ac ac',
+        (forall e, (e ∈e e' = true \/ e ∈e e'' = true) <-> e ∈e es = true) ->
+        (forall v, (s,v) ∈e es = false -> res_cap (vs,es,c,s,t) f s v == 0) ->
+        (forall v, (s,v) ∈e e' = true -> res_cap (vs,e',c,s,t) f s v == 0) ->
+        initial_push (vs,es,c,s,t) f ac e'' = (f',ac') ->
+        forall v, res_cap (vs,es,c,s,t) f' s v == 0.
+    Proof.
+    Admitted.
+
+    (* rakenda InitialGpr ja InitialPushResCap0, kus e'=nil  *)
+    Lemma FlowConservationGprMain fn:
+        let '((vs, es),c,s,t) := fn in
+        (forall u v, ((u, v) ∈e es = true) -> (u ∈v vs) = true /\ (v ∈v vs) = true) ->
+        VSet.IsSet vs ->
+        (forall u v, c u v >= 0) ->
+        forall f' tr', 
+        gpr_trace fn = (Some f',tr') ->
+        (forall n, ActiveNode fn f' n -> n=t) /\ 
+        FlowConservationConstraint fn f'.
+    Proof.
+    Admitted.
+
 End PR.
 
 Module Nat <: T.
