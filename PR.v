@@ -681,7 +681,7 @@ Module PR (T:T).
 
     Definition FlowConservationConstraint (fn:FlowNet) (f:@EMap.t Q 0) := 
         let '((vs, es),c,s,t) := fn in
-        forall v, (v ∈v vs) = true -> v<>s -> v<>t -> excess fn f v = 0.
+        forall v, (v ∈v vs) = true -> v<>s -> v<>t -> excess fn f v == 0.
     
     Definition PreFlowCond (fn:FlowNet) (f:@EMap.t Q 0) := 
             CapacityConstraint fn f /\ NonDeficientFlowConstraint fn f. 
@@ -750,7 +750,7 @@ Module PR (T:T).
         Qed.
 
     Definition RelabelCondition fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u := 
-      excess fn f u > 0 /\ forall v, res_cap fn f u v > 0 -> (l[u] <= l[v])%nat.
+      excess fn f u > 0 /\ forall v, v ∈v (nodes fn) = true -> res_cap fn f u v > 0 -> (l[u] <= l[v])%nat.
 
 
     Lemma minProp: forall a b, (min a b = a /\ a <= b)%nat \/ 
@@ -909,6 +909,7 @@ Module PR (T:T).
         + erewrite -> NMap.FindReplaceNeq. 
         - erewrite -> NMap.FindReplaceNeq. lia. symmetry; auto.
         - symmetry; auto.
+        + auto.
     Qed.
 
     Lemma FPNCondition fn f l u vs': 
@@ -1311,8 +1312,14 @@ Module PR (T:T).
     Proof.
         unfold ActiveNode, NoSteepArc, RelabelCondition.
         destruct fn as [[[[vs es] c] s] t]. intros.
-
-    Admitted.
+        split; try tauto. intros.
+        eapply RFindCondition in H2 as P2. destruct P2. apply H0 in H4 as P1.
+        eapply RFindMemCondition in H2.
+        eapply FPNConditionNone with (v := v0) in H1; auto. 
+        destruct H1.
+        + rewrite QLt_false in H1. lra.
+        + lia.
+        Qed.
 
     Lemma FlowConservationGpr fn g:forall (f:@EMap.t Q 0) (l:@NMap.t nat O) ac tr,
         let '((vs, es),c,s,t) := fn in
@@ -1331,17 +1338,61 @@ Module PR (T:T).
         (forall n, ActiveNode fn f' n -> n=t) /\ 
         FlowConservationConstraint fn f'.
     Proof.        
-        (* destruct fn as [[[[vs es] c] s] t]. induction g;
-        intros f l ac tr Hvs Hac Hinac Hvl Hnan Hpfc Hfmpc f' tr' H.
+        destruct fn as [[[[vs es] c] s] t]. induction g;
+        intros f l ac tr Heisn Hvs Hac Hrcn Hnsa Hnvs Hvl Han Hprc Hfmpc f' tr' H.
         + simpl in H. inversion H.
-        + simpl in H. destruct_guard_in H.
-        - admit.
+        + rewrite gpr_helper_trace_fn in H. destruct_guard_in H.
+        - destruct p. destruct_guard_in H.
+        * cbn zeta in H. destruct_guard_in H.
+        ** apply VSet.choiceSome in E0. destruct E0. destruct H1.
+         eapply IHg in H; eauto.
+        *** clear H IHg. destruct_guard.
+        **** apply VSet.AddIsSet. auto.
+        **** apply VSet.AddIsSet; auto.
+        *** clear H IHg. apply PushResCapNodes; auto.
+        **** apply FPNinVs in E1. auto.
+        *** clear H IHg. apply PushNoSteepArc; auto.
+        eapply FPNCondition; eauto.
+        apply Han in H0. tauto.
+        *** clear H IHg. intros. destruct_guard_in H. simpl VSet.mem in H.
+        **** destruct (equal n v0).
+        ***** subst. eapply FPNinVs; eauto.
+        ***** rewrite VSet.MemRemoveNeq in H; auto.
+        **** destruct (equal n v0).
+        ***** subst. eapply FPNinVs; eauto.
+        ***** rewrite VSet.MemAddNeq in H; auto. subst.
+        destruct (equal n v).
+        ****** subst. rewrite VSet.MemRemoveEq in H. inversion H.
+        ****** rewrite VSet.MemRemoveNeq in H; auto.
+        *** clear H IHg. eapply (PushValidLabel (vs, es, c ,s, t)); auto.
+        eapply FPNCondition; eauto. apply Han in H0. tauto.
+        *** intros. split; intros.
+        **** destruct (equal n v0).
+        ***** subst. clear H IHg. apply HENSCondition in E2. split; try tauto.
+        split.
+        ****** eapply FPNinVs in E1. auto.
+        ****** tauto.
+        ***** clear H IHg. rewrite VSet.MemAddNeq in H3; eauto.
+        destruct_guard_in H3.
+        ****** split.  eapply PushActiveCondition.
+
+
+        **** apply VSet.choiceSome in E0; auto.
+          admit.
         - inversion H. apply VSet.choiceNone in E0. subst. split.
-        * intros. apply Hnan in H0. inversion H0.
+        * intros. destruct (equal n t); auto. assert (n ∈v VSet.empty = true).
+        ** apply Han. tauto.
+        ** inversion H1.
         * unfold FlowConservationConstraint. intros.
-        unfold PreFlowCond in Hpfc. destruct Hpfc.
-        apply H4 in H0 as P1. specialize (P1 H1).
-        destruct (excess (vs, es, c, s, t) f' v =? 0). admit. *)
+        unfold PreFlowCond in Hprc. destruct Hprc.
+        apply H4 in H0 as P1. specialize (P1 H1). 
+        unfold NonDeficientFlowConstraint in H4.
+        destruct (0 <? excess (vs, es, c, s, t) f' v) eqn : Q1.
+        ** eapply (reflect_iff _ _ (QLt_spec _ _)) in Q1.
+        assert (v ∈v VSet.empty = true).
+        *** eapply Han. split; auto. split; auto.
+        *** inversion H5.
+        ** apply QLt_false in Q1. lra.     
 
     Admitted.
 (*intros Hvs Hxvs Hyvs [Hcc Hndf] Hfmp Hpc.*)
