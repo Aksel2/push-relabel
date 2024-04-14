@@ -1374,8 +1374,22 @@ Module PR (T:T).
         ****** tauto.
         ***** clear H IHg. rewrite VSet.MemAddNeq in H3; eauto.
         destruct_guard_in H3.
-        ****** split.  eapply PushActiveCondition.
-
+        ****** split. 
+        ******** subst. destruct (equal n v).
+        ********* subst. split; eauto. eapply (reflect_iff _ _ (QLt_spec _ _)) in E0. auto.
+        ********* eapply PushActiveCondition; eauto. eapply Han in H3. tauto.
+        ******** eapply Han in H3; tauto.
+        ****** subst. rewrite VSet.MemRemoveNeq in H3.
+        ******* split. 
+        ******** eapply PushActiveCondition; eauto.
+        ********* eapply Han in H3. tauto.
+        ********* admit.
+        ******** eapply Han in H3. tauto.
+        ******* eapply HENSCondition in E2. eapply FPNinVs in E1. admit.
+        ****
+        
+   
+(*
 
         **** apply VSet.choiceSome in E0; auto.
           admit.
@@ -1392,7 +1406,7 @@ Module PR (T:T).
         assert (v ∈v VSet.empty = true).
         *** eapply Han. split; auto. split; auto.
         *** inversion H5.
-        ** apply QLt_false in Q1. lra.     
+        ** apply QLt_false in Q1. lra.     *)
 
     Admitted.
 (*intros Hvs Hxvs Hyvs [Hcc Hndf] Hfmp Hpc.*)
@@ -1405,7 +1419,14 @@ Module PR (T:T).
             (s v0)) vs = 
         map (fun v0 => @EMap.find Q 0 f (s v0)) vs.
     Proof.
-    Admitted.
+        induction vs; intros.
+        + simpl. auto.
+        + simpl. rewrite IHvs; auto.
+        f_equal. clear IHvs.
+        - erewrite EMap.FindReplaceNeq; auto.
+        apply H. cbn. rewrite eqb_refl. auto.
+        - intros. apply H. cbn. destruct_guard; auto.
+        Qed.
 
     (* equal y s, siis equal n y, siis equal a s  *)
     Lemma NDFinitial vs es c s t d  y n f: 
@@ -1422,6 +1443,9 @@ Module PR (T:T).
         EMap.find f (s,y) <= c s y ->
         excess (vs, es, c, s, t) (EMap.replace (s, y) (c s y) f) s <= 0.
     Proof.
+        induction vs; intros.
+        + simpl. admit.
+    
     Admitted.
 
     (* väga lühike, kuna võrratused antud. Ind. üle vs.  *)
@@ -1432,6 +1456,7 @@ Module PR (T:T).
         n<>y ->
         excess (vs, es, c, s, t) f n  == excess (vs, es, c, s, t) (EMap.replace (s, y) (c s y) f) n.
     Proof.
+       induction vs; intros.
     Admitted.
 
     (* induktsioon üle es'  *)
