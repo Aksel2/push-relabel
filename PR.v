@@ -1374,7 +1374,18 @@ Module PR (T:T).
         ****** tauto.
         ***** clear H IHg. rewrite VSet.MemAddNeq in H3; eauto.
         destruct_guard_in H3.
-        ****** split. 
+        ****** split. eapply PushActiveCondition; eauto.
+        ******* eapply Han in H3; tauto.
+        ******* subst. admit.
+        ******* eapply Han in H3; tauto.
+        ****** split. eapply PushActiveCondition; eauto.
+        ******* subst. rewrite VSet.MemRemoveNeq in H3.
+        ******** eapply Han in H3. tauto.
+        ******** admit.
+        ******* admit.
+        *******
+
+(*
         ******** subst. destruct (equal n v).
         ********* subst. split; eauto. eapply (reflect_iff _ _ (QLt_spec _ _)) in E0. auto.
         ********* eapply PushActiveCondition; eauto. eapply Han in H3. tauto.
@@ -1383,11 +1394,11 @@ Module PR (T:T).
         ******* split. 
         ******** eapply PushActiveCondition; eauto.
         ********* eapply Han in H3. tauto.
-        ********* admit.
-        ******** eapply Han in H3. tauto.
+        ********* eapply FPNinVs in E1. admit.
+        ******** eapply Han in H3. tauto. 
         ******* eapply HENSCondition in E2. eapply FPNinVs in E1. admit.
         ****
-        
+        *)
    
 (*
 
@@ -1457,6 +1468,8 @@ Module PR (T:T).
         excess (vs, es, c, s, t) f n  == excess (vs, es, c, s, t) (EMap.replace (s, y) (c s y) f) n.
     Proof.
        induction vs; intros.
+       + simpl. reflexivity.
+       + admit. 
     Admitted.
 
     (* induktsioon üle es'  *)
