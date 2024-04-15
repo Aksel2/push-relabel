@@ -601,7 +601,7 @@ Module PR (T:T).
                     gpr_helper_trace fn f' l ac'' g' (Push u v f' ac'::tr)
             | None =>
                 match relabel fn f l u with
-                | None => (Some f, RelabelFailed::tr)
+                | None => (None, RelabelFailed::tr)
                 | Some l' =>
                     gpr_helper_trace fn f l' ac g' (Relabel u (l'[u]) l'::tr)
                 end
@@ -630,7 +630,7 @@ Module PR (T:T).
                         gpr_helper_trace fn f' l ac'' g' (Push u v f' ac'::tr)
                 | None =>
                     match relabel fn f l u with
-                    | None => (Some f, RelabelFailed::tr)
+                    | None => (None, RelabelFailed::tr)
                     | Some l' =>
                         gpr_helper_trace fn f l' ac g' (Relabel u (l'[u]) l'::tr)
                     end
@@ -1374,31 +1374,89 @@ Module PR (T:T).
         ****** tauto.
         ***** clear H IHg. rewrite VSet.MemAddNeq in H3; eauto.
         destruct_guard_in H3.
-        ****** split. eapply PushActiveCondition; eauto.
-        ******* eapply Han in H3; tauto.
-        ******* subst. admit.
-        ******* eapply Han in H3; tauto.
-        ****** split. eapply PushActiveCondition; eauto.
-        ******* subst. rewrite VSet.MemRemoveNeq in H3.
-        ******** eapply Han in H3. tauto.
-        ******** admit.
-        ******* admit.
-        *******
-
-(*
-        ******** subst. destruct (equal n v).
-        ********* subst. split; eauto. eapply (reflect_iff _ _ (QLt_spec _ _)) in E0. auto.
-        ********* eapply PushActiveCondition; eauto. eapply Han in H3. tauto.
-        ******** eapply Han in H3; tauto.
-        ****** subst. rewrite VSet.MemRemoveNeq in H3.
-        ******* split. 
-        ******** eapply PushActiveCondition; eauto.
-        ********* eapply Han in H3. tauto.
-        ********* eapply FPNinVs in E1. admit.
-        ******** eapply Han in H3. tauto. 
-        ******* eapply HENSCondition in E2. eapply FPNinVs in E1. admit.
-        ****
-        *)
+        ****** eapply Han in H3. destruct H3. split; eauto.
+        destruct (equal n v). subst.
+        *******  eapply (reflect_iff _ _ (QLt_spec _ _)) in E0. split; eauto.
+        ******* eapply PushActiveCondition; eauto.
+        ****** subst. destruct (equal n v).
+        ******* subst. rewrite VSet.MemRemoveEq in H3. inversion H3.
+        ******* rewrite VSet.MemRemoveNeq in H3; eauto. 
+        eapply Han in H3. destruct H3. split; eauto. 
+         eapply PushActiveCondition; eauto.
+        **** clear H IHg. destruct (equal n v0).
+        ***** subst. simpl. rewrite eqb_refl. auto.
+        ***** rewrite VSet.MemAddNeq; auto.
+        destruct_guard.
+        ****** eapply Han. destruct H3. split; auto. destruct (equal n v).
+        ******* subst. eapply Han in H0. tauto.
+        ******* eapply PushActiveInv in H; auto. 
+        ******** eapply FPNinVs in E1. auto.
+        ******** eapply FPNCondition in E1; eauto.
+        apply Han in H0; tauto.
+        ****** subst. rewrite VSet.MemRemoveNeq.
+        ******* eapply FPNinVs in E1 as P. eapply FPNCondition in E1; eauto;
+        [| eapply Han in H0; tauto]. destruct H3. eapply PushActiveInv in H; eauto.
+        eapply Han. split; auto.
+        ******* intro C. subst. destruct H3. destruct H. apply QLt_false in E0. lra.
+        *** clear H IHg. eapply (PushPreFlow (vs, es, c, s, t)); auto. 
+        **** eapply FPNinVs in E1. auto.
+        **** eapply FPNCondition; eauto. eapply Han in H0; tauto.
+        *** clear H IHg. eapply (PushFlowMapPos (vs, es, c, s, t)); eauto.
+        eapply FPNCondition; eauto. eapply Han in H0. tauto.
+        *** auto.
+        ** eapply VSet.choiceSome in E0 as P; auto. destruct P. destruct H1.
+        eapply FPNinVs in E1 as P. apply Han in H0 as W. destruct W. 
+        eapply FPNCondition in E1 as P2; auto.
+        eapply HENSConditionFalse in E2 as Q.
+        eapply IHg in H; eauto.
+        *** eapply VSet.RemoveIsSet. destruct_guard; auto.
+        *** eapply PushResCapNodes; auto.
+        *** eapply PushNoSteepArc; auto.
+        *** intros. destruct (equal n v0).
+        **** subst. auto.
+        **** rewrite VSet.MemRemoveNeq in H5; auto. eapply Hnvs.
+         destruct_guard_in H5; auto. subst. rewrite VSet.MemRemoveNeq in H5; auto.
+         intro C. subst. rewrite VSet.MemRemoveEq in H5. inversion H5.
+        *** eapply (PushValidLabel (vs, es, c, s, t)); eauto.
+        *** intros. destruct (equal n v0).
+        **** subst. rewrite VSet.MemRemoveEq. split; intros; [inversion H1 |].
+        destruct Q.
+        ***** destruct H1. destruct H1. lra.
+        ***** simpl in H5. tauto.
+        **** rewrite VSet.MemRemoveNeq; auto. destruct_guard; split; intros.
+        ***** eapply Han in H5. destruct H5. split; auto. destruct (equal n v).
+        ****** subst. split; auto.  eapply (reflect_iff _ _ (QLt_spec _ _)) in E3.
+        auto.
+        ****** eapply PushActiveCondition; eauto.
+        ***** eapply Han. destruct H5. split; auto.
+        eapply PushActiveInv in P2; eauto.
+        ***** subst. destruct (equal n v).
+        ****** subst. rewrite VSet.MemRemoveEq in H5. inversion H5.
+        ****** rewrite VSet.MemRemoveNeq in H5; auto. 
+        eapply Han in H5. destruct H5. split; auto. 
+        eapply PushActiveCondition; eauto.
+        ***** subst. destruct (equal n v).
+        ****** subst. eapply QLt_false in E3. destruct H5, H1. lra.
+        ****** rewrite VSet.MemRemoveNeq; auto. eapply Han. destruct H5. split; auto.
+        eapply PushActiveInv in P2; eauto.
+        *** eapply (PushPreFlow (vs, es, c, s, t)); eauto.
+        *** eapply (PushFlowMapPos (vs, es, c, s, t)); eauto.
+        * destruct_guard_in H.
+        ** eapply VSet.choiceSome in E0; auto. destruct E0, H1.
+         eapply IHg in H; eauto.
+        *** eapply RelabelNoSteepArc; eauto.
+        *** eapply (RelabelValidLabel (vs, es, c, s, t)); eauto. 
+        unfold relabel in E2. destruct_guard_in E2; [| inversion E2].
+        eapply RelabelValidCondition; eauto.
+        **** apply Han. auto.
+        ** inversion H.
+        - apply VSet.choiceNone in E0. subst. inv_clear H. split.
+        * intros. destruct (equal n t); auto. assert (n ∈v VSet.empty = true).
+        ** eapply Han. tauto.
+        ** simpl in H0. inversion H0.
+        * unfold FlowConservationConstraint. intros. unfold PreFlowCond in Hprc.
+        destruct Hprc. unfold NonDeficientFlowConstraint in H3.
+        apply H3 in H; auto. 
    
 (*
 
