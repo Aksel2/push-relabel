@@ -1456,29 +1456,13 @@ Module PR (T:T).
         ** simpl in H0. inversion H0.
         * unfold FlowConservationConstraint. intros. unfold PreFlowCond in Hprc.
         destruct Hprc. unfold NonDeficientFlowConstraint in H3.
-        apply H3 in H; auto. 
-   
-(*
-
-        **** apply VSet.choiceSome in E0; auto.
-          admit.
-        - inversion H. apply VSet.choiceNone in E0. subst. split.
-        * intros. destruct (equal n t); auto. assert (n ∈v VSet.empty = true).
-        ** apply Han. tauto.
-        ** inversion H1.
-        * unfold FlowConservationConstraint. intros.
-        unfold PreFlowCond in Hprc. destruct Hprc.
-        apply H4 in H0 as P1. specialize (P1 H1). 
-        unfold NonDeficientFlowConstraint in H4.
-        destruct (0 <? excess (vs, es, c, s, t) f' v) eqn : Q1.
-        ** eapply (reflect_iff _ _ (QLt_spec _ _)) in Q1.
-        assert (v ∈v VSet.empty = true).
-        *** eapply Han. split; auto. split; auto.
-        *** inversion H5.
-        ** apply QLt_false in Q1. lra.     *)
-
-    Admitted.
-(*intros Hvs Hxvs Hyvs [Hcc Hndf] Hfmp Hpc.*)
+        apply H3 in H as P; auto. clear IHg. 
+        destruct (Qeq_bool (excess (vs, es, c, s, t) f' v) 0) eqn : E.
+        ** eapply Qeq_bool_iff in E. auto.
+        ** eapply Qeq_bool_neq in E. assert (v ∈v VSet.empty = true).
+        *** eapply Han. split; auto. split; auto. lra.
+        *** inversion H4.
+        Qed.
 
     (* sama nagu SumSameUpdate *)
     Lemma SumSameReplace (f:@EMap.t Q 0) (s:V->V*V) vs u v d : 
@@ -1504,7 +1488,23 @@ Module PR (T:T).
         excess (vs, es, c, s, t) f n <= 
             excess (vs, es, c, s, t) (EMap.replace (s, y) d f) n .
     Proof.
-    Admitted. 
+        intros Hd Hnns.
+        induction vs; intros.
+        + simpl. lra. 
+        + unfold excess in *. simpl. destruct (equal n y).
+        - subst. destruct (equal a s).
+        * subst. erewrite EMap.FindReplaceEq. erewrite EMap.FindReplaceNeq.
+        ** unfold R in *. lra.
+        ** intro C. inv_clear C. auto.
+        * erewrite EMap.FindReplaceNeq, EMap.FindReplaceNeq.
+        ** unfold R in *. lra.
+        ** intro C. inv_clear C. auto.
+        ** intro C. inv_clear C. auto.
+        - erewrite EMap.FindReplaceNeq, EMap.FindReplaceNeq.
+        * lra.
+        *  intro C. inv_clear C. auto.
+        * intro C. inv_clear C. auto.
+        Qed.
 
     (* ind. üle vs *)
     Lemma SourceDeficient vs es c s t y f: 
@@ -1512,10 +1512,20 @@ Module PR (T:T).
         EMap.find f (s,y) <= c s y ->
         excess (vs, es, c, s, t) (EMap.replace (s, y) (c s y) f) s <= 0.
     Proof.
+        intros Has Hcap.
         induction vs; intros.
-        + simpl. admit.
-    
-    Admitted.
+        + simpl. lra.
+        + unfold excess in *. simpl. destruct (Edge.equal (s,y) (a,s)).
+        - inv_clear e. erewrite EMap.FindReplaceEq. lra.
+        - destruct (equal y a).
+        * subst. erewrite EMap.FindReplaceEq. erewrite EMap.FindReplaceNeq.
+        ** specialize (Has a). lra.
+        ** auto.
+        * erewrite EMap.FindReplaceNeq, EMap.FindReplaceNeq.
+        ** specialize (Has a). lra.
+        ** intro C. inv_clear C. auto.
+        ** auto.
+        Qed.
 
     (* väga lühike, kuna võrratused antud. Ind. üle vs.  *)
     Lemma ExcessSame vs es c s t y f n: 
@@ -1525,10 +1535,14 @@ Module PR (T:T).
         n<>y ->
         excess (vs, es, c, s, t) f n  == excess (vs, es, c, s, t) (EMap.replace (s, y) (c s y) f) n.
     Proof.
+        intros Has Hcap Hnns Hnny.
        induction vs; intros.
        + simpl. reflexivity.
-       + admit. 
-    Admitted.
+       + simpl.  erewrite EMap.FindReplaceNeq, EMap.FindReplaceNeq.
+       - unfold excess in IHvs. lra.
+       - intro C. inv_clear C. auto.
+       - intro C. inv_clear C. auto.
+       Qed.
 
     (* induktsioon üle es'  *)
     Lemma InitialGpr fn :
@@ -1553,6 +1567,97 @@ Module PR (T:T).
         PreFlowCond fn f' /\
         FlowMapPositiveConstraint fn f'.
     Proof.
+        destruct fn as [[[[vs es] c] s] t]. intros Heisn Hvs es'. 
+        induction es';
+        intros f f' ac ac' HeisE Hac Haiss Hexc Hrcn Hnvs Hactn Hpfc Hfmpc H.
+        + simpl in H. inv_clear H. repeat split; eauto.
+        - apply Hrcn in H. tauto.
+        - apply Hrcn in H. tauto.
+        - eapply Hactn, H.
+        - eapply Hactn, H.
+        - intros. eapply Hactn in H. apply H.
+        - destruct Hpfc; auto.
+        - destruct Hpfc; auto.
+        - eapply Hfmpc.
+        - eapply Hfmpc.
+        + unfold initial_push in H. fold initial_push in H. destruct_guard_in H.
+        assert (Hvv0 : (v, v0) ∈e es = true). 
+        {eapply HeisE. simpl. do 2 rewrite eqb_refl. auto. } 
+        destruct (equal s v).
+        - subst. eapply IHes' in H; eauto.
+        * intros. eapply HeisE. simpl. destruct (Edge.equal n (v, v0)); eauto.
+        * destruct_guard; eauto. eapply VSet.AddIsSet; auto.
+        * intros. destruct (Edge.equal (v, v0) (a, v)).
+        ** inv_clear e. lra.
+        ** erewrite EMap.FindReplaceNeq; auto. destruct (equal a v0).
+        *** subst. erewrite EMap.FindReplaceEq. 
+        assert (EMap.find f (v, v0) <= c v v0).
+        **** eapply Hpfc. auto.
+        **** specialize (Haiss v0). lra.
+        *** erewrite EMap.FindReplaceNeq; eauto. intro C. inv_clear C. auto.
+        * eapply SourceDeficient; eauto. eapply Hpfc. auto.
+        * unfold ResCapNodes. intros. clear IHes'. unfold res_cap in H0.
+        destruct_guard_in H0; eauto. destruct (Edge.equal (v, v0) (v1, u)).
+        ** inv_clear e. eapply Heisn in Hvv0. tauto.
+        ** erewrite EMap.FindReplaceNeq in H0; eauto.
+        eapply Hrcn. unfold res_cap. rewrite E0. apply H0.
+        * intros. destruct_guard_in H0; eauto. destruct (equal n v0).
+        ** subst. clear IHes'. eapply Heisn. eapply Hvv0.
+        ** clear IHes'. eapply Hnvs. rewrite VSet.MemAddNeq in H0; eauto.
+        * intros. destruct_guard.
+        ** split; intros.
+        *** destruct (equal n v0).
+        **** subst. clear IHes'. eapply HENSCondition in E0. 
+        destruct E0; split; eauto. split; eauto. eapply Heisn, Hvv0.
+        **** erewrite VSet.MemAddNeq in H0; eauto.
+        clear IHes'. eapply Hactn in H0. destruct H0; split; auto. split.
+        ***** eapply Hnvs. eapply Hactn. split; auto.
+        ***** assert (EMap.find f (v, v0) <= c v v0).
+        ****** eapply Hpfc. auto.
+        ****** eapply (NDFinitial vs es c v t) with (n := n) in H2.
+        ******* destruct H0. set (e := excess _) in *.  unfold R in *. lra.
+        ******* intro C. inv_clear C. destruct H0. lra.
+        *** destruct (equal n v0).
+        **** subst. simpl. rewrite eqb_refl. auto. 
+        **** erewrite VSet.MemAddNeq; eauto. destruct H0. eapply Hactn.
+        split; auto. destruct H0. split; auto. 
+        assert (EMap.find f (v, v0) <= c v v0). 
+        ***** eapply Hpfc. auto.
+        ***** destruct (equal n v).
+        ****** subst. eapply (SourceDeficient vs es c v t) in H3; eauto.
+        set (e := excess _) in *. lra.
+        ****** eapply (ExcessSame vs es c v t) in H3; eauto.
+        set (e := excess _) in *. lra.
+        ** split; intros.
+        *** eapply Hactn in H0 as P. destruct P. split; auto.
+        split; eauto. destruct (equal n v0).
+        **** subst. destruct H1. eapply HENSConditionFalse in E0.
+        destruct (equal v0 v).
+        ***** subst. assert (EMap.find f (v, v) <= c v v).
+        ****** eapply Hpfc; auto.
+        ****** eapply (SourceDeficient vs es c v t) in H4; eauto.
+        set (e := excess _) in *. lra.
+        ***** assert (EMap.find f (v, v0) <= c v v0).
+        ****** eapply Hpfc; auto.
+        ****** eapply (ExcessSame vs es c v t) with (n := v0) in H4; eauto.
+        ******* set (e := excess _) in *. lra.
+        *******
+
+        ***** set (e := excess _) in *. lra.
+        
+         destruct (equal n v).
+        **** subst. assert (EMap.find f (v, v0) <= c v v0). 
+        ***** eapply Hpfc; auto.
+        ***** eapply (SourceDeficient vs es c v t) in H3; eauto. destruct H1.
+        set (e := excess _) in *. lra.
+        ****  assert (EMap.find f (v, v0) <= c v v0). 
+        ***** eapply Hpfc; eauto.
+        ***** destruct H1. eapply (ExcessSame vs es c v t) in H3; eauto.
+        ****** set (e := excess _) in *. lra.
+        ****** 
+
+
+        
     Admitted.
 
     (* e' on juba töödeldud servade hulk.
