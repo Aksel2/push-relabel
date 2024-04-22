@@ -1639,26 +1639,51 @@ Module PR (T:T).
         set (e := excess _) in *. lra.
         ***** assert (EMap.find f (v, v0) <= c v v0).
         ****** eapply Hpfc; auto.
-        ****** eapply (ExcessSame vs es c v t) with (n := v0) in H4; eauto.
-        ******* set (e := excess _) in *. lra.
-        *******
-
-        ***** set (e := excess _) in *. lra.
-        
-         destruct (equal n v).
-        **** subst. assert (EMap.find f (v, v0) <= c v v0). 
-        ***** eapply Hpfc; auto.
-        ***** eapply (SourceDeficient vs es c v t) in H3; eauto. destruct H1.
+        ****** eapply (NDFinitial vs es c v t) with (n := v0) in H4; eauto.
+         set (e := excess _) in *. lra.
+        **** destruct (equal n v).
+        ***** subst. assert (EMap.find f (v, v0) <= c v v0). 
+        ****** eapply Hpfc; auto.
+        ****** eapply (SourceDeficient vs es c v t) in H3; eauto. destruct H1.
         set (e := excess _) in *. lra.
-        ****  assert (EMap.find f (v, v0) <= c v v0). 
-        ***** eapply Hpfc; eauto.
-        ***** destruct H1. eapply (ExcessSame vs es c v t) in H3; eauto.
-        ****** set (e := excess _) in *. lra.
-        ****** 
+        *****  assert (EMap.find f (v, v0) <= c v v0). 
+        ****** eapply Hpfc; eauto.
+        ****** destruct H1. eapply (ExcessSame vs es c v t) in H3; eauto.
+        ******* set (e := excess _) in *. lra.
+        *** eapply HENSConditionFalse in E0. destruct H0. eapply Hactn.
+        split; auto. destruct H0.
+        split; auto. assert (EMap.find f (v, v0) <= c v v0).
+        **** eapply Hpfc. clear IHes'. auto. 
+    
+        **** destruct (equal n v).
+        ***** subst. 
+        eapply (SourceDeficient vs es c v t) with (y := v0) in Haiss; eauto.
+         set (e := excess _) in *. lra.
+        ***** destruct (equal n v0).
+        ****** subst. destruct E0.
+        ******* set (e := excess _) in *. lra.
+        ******* contradiction.
+        ****** eapply (ExcessSame vs es c v t) with (n := n) in H3; eauto.
+        set (e := excess _) in *. lra.
+        * unfold PreFlowCond. unfold CapacityConstraint, NonDeficientFlowConstraint.
+        split; intros.
+        ** destruct (Edge.equal (u, v1) (v, v0)).
+        *** inv_clear e. erewrite EMap.FindReplaceEq. lra.
+        *** erewrite EMap.FindReplaceNeq; auto.
+        eapply Hpfc. auto.
+        ** assert (EMap.find f (v, v0) <= c v v0).
+        *** eapply Hpfc; auto.
+        *** eapply (NDFinitial vs es c v t)  in H2; eauto.
+        eapply Hpfc in H0. specialize (H0 H1).  set (e := excess _) in *. lra.
+        * unfold FlowMapPositiveConstraint. intros. split.
+        ** destruct (Edge.equal (u, v1) (v, v0)).
+        *** inv_clear e. erewrite EMap.FindReplaceEq. eapply Hfmpc.
+        *** erewrite EMap.FindReplaceNeq; eauto. eapply Hfmpc.
+        ** eapply Hfmpc.
+        - eapply IHes'; eauto. intros. subst. eapply HeisE. simpl.
+        destruct_guard; auto.
+        Qed.
 
-
-        
-    Admitted.
 
     (* e' on juba töödeldud servade hulk.
        induktsioon üle e'', 
@@ -1670,7 +1695,51 @@ Module PR (T:T).
         initial_push (vs,es,c,s,t) f ac e'' = (f',ac') ->
         forall v, res_cap (vs,es,c,s,t) f' s v == 0.
     Proof.
-    Admitted.
+        induction e''; intros.
+        + simpl in H2. inv_clear H2. unfold res_cap. destruct_guard.
+        - eapply H in E0. destruct E0.
+        * eapply H1 in H2 as P. unfold res_cap in P. rewrite H2 in P. auto.
+        * inversion H2.
+        - eapply H0 in E0 as P. unfold res_cap in P. rewrite E0 in P. auto.
+        + simpl in H2. destruct_guard_in H2. subst. destruct (equal s v0).
+        - subst. eapply IHe'' with (e' := ESet.add (v0, v1) e') in H2; eauto.
+        * intros. clear IHe'' H2. destruct (Edge.equal e (v0, v1)).
+        ** inv_clear e. erewrite ESet.MemAddEq. split; intros.
+        *** eapply H. right. simpl. rewrite eqb_refl, eqb_refl. auto.
+        *** tauto.
+        ** erewrite ESet.MemAddNeq; auto. split; intros.
+        *** eapply H. destruct H2.
+        **** tauto.
+        **** right. simpl. destruct_guard; auto.
+        *** eapply H in H2. simpl in H2. rewrite Edge.eqb_neq in H2; auto.
+        * intros. unfold res_cap. rewrite H3. clear H2.
+         destruct (Edge.equal (v0, v1) (v2, v0)).
+        ** inv_clear e. erewrite EMap.FindReplaceEq. clear IHe''.
+        assert ((v2, v2) ∈e es = true).
+        *** eapply H. right. simpl. rewrite eqb_refl. auto.
+        *** rewrite H3 in H2. inversion H2.
+        ** erewrite EMap.FindReplaceNeq; auto. clear IHe''. eapply H0 in H3 as P.
+        unfold res_cap in P. rewrite H3 in P. auto.
+        * intros. unfold res_cap. rewrite H3. clear H2 IHe''.
+        destruct (equal v2 v1).
+        ** inv_clear e. rewrite EMap.FindReplaceEq. lra.
+        ** rewrite EMap.FindReplaceNeq.
+        *** rewrite ESet.MemAddNeq in H3.
+        **** eapply H1 in H3 as P. unfold res_cap in P. rewrite H3 in P. auto.
+        **** intro C. inv_clear C. destruct n. auto.
+        *** intro C.  inv_clear C. destruct n. auto.
+        - eapply IHe''  with (e' := ESet.add (v0, v1) e'); intros; eauto.
+        *  destruct (Edge.equal e (v0, v1)).
+        ** inv_clear e. rewrite ESet.MemAddEq. split; intros.
+        *** eapply H. right. simpl. rewrite eqb_refl, eqb_refl. auto.
+        *** tauto.
+        ** rewrite ESet.MemAddNeq; auto. split; intros.
+        *** eapply H. simpl. rewrite Edge.eqb_neq; auto.
+        *** eapply H in H3 as P. simpl in P. rewrite Edge.eqb_neq in P; auto.
+        * unfold res_cap. rewrite H3. rewrite ESet.MemAddNeq in H3.
+        ** eapply H1 in H3 as P. unfold res_cap in P. rewrite H3 in P. auto.
+        ** intro C. inv_clear C. destruct n. auto.
+        Qed.
 
     (* rakenda InitialGpr ja InitialPushResCap0, kus e'=nil  *)
     Lemma FlowConservationGprMain fn:
@@ -1683,7 +1752,56 @@ Module PR (T:T).
         (forall n, ActiveNode fn f' n -> n=t) /\ 
         FlowConservationConstraint fn f'.
     Proof.
-    Admitted.
+        destruct fn as [[[[vs es] c] s] t].  intros. unfold gpr_trace in H2.
+        destruct_guard_in H2. 
+        eapply (InitialGpr (vs, es, c, s, t)) in E0 as P; eauto.
+        + destruct P, H4, H5, H6, H7. 
+        eapply (FlowConservationGpr (vs, es, c, s, t)) in H2; eauto.
+        - simpl. unfold NoSteepArc. intros. simpl. destruct (equal u s).
+        * subst. eapply InitialPushResCap0 with (e' := nil) (v := v) in E0.
+        ** set (r := res_cap _) in *. lra.
+        ** intros. split; intros.
+        *** destruct H10; auto. inversion H10.
+        *** right. auto.
+        ** intros. unfold res_cap. rewrite H10. simpl. reflexivity.
+        ** intros. inversion H10.
+        * lia.
+        - simpl. unfold ValidLabeling. intros. simpl. destruct (equal u s), (equal v s).
+        * subst. lia.
+        * subst. unfold PR.E in H9. eapply ESet.in_filter in H9. destruct H9.
+         eapply InitialPushResCap0 with (e' := nil) (v := v) in E0.
+         ** unfold res_cap in E0. rewrite H9 in E0. 
+         eapply (reflect_iff _ _ (QLt_spec _ _)) in H10. lra.
+         ** intros. split; intros.
+         *** destruct H11; auto. inversion H11.
+         *** tauto.
+         ** intros. unfold res_cap. rewrite H11. simpl. lra.
+         ** intros. inversion H11.
+         * subst. lia.
+         * lia. 
+        + eapply VSet.NilIsSet.
+        + intros. simpl. lra.
+        + unfold excess. clear. induction vs.
+        - simpl. lra.
+        - simpl. lra.
+        + unfold ResCapNodes. intros. unfold res_cap in H3. destruct_guard_in H3.
+        - apply H in E1. auto.
+        - simpl in H3. lra.
+        + intros. inversion H3.
+        + intros. split; intros.
+        - inversion H3.
+        - unfold ActiveNode in H3. destruct H3. destruct H3. simpl in H5.
+        clear - H5. induction vs.
+        * simpl in H5. lra.
+        * simpl in H5. lra.
+        + unfold PreFlowCond.  
+        unfold CapacityConstraint, NonDeficientFlowConstraint.
+        split; intros.
+        - simpl. auto.
+        - simpl. clear. induction vs; simpl; lra.
+        + unfold FlowMapPositiveConstraint. intros; split; auto.
+        simpl. lra.
+    Qed.
 
 End PR.
 
