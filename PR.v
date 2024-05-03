@@ -449,6 +449,9 @@ Module PR (T:T).
 
     Definition sink (fn:FlowNet) := 
         let '((vs, es),c,s,t) := fn in t.        
+
+    Definition source (fn:FlowNet) := 
+        let '((vs, es),c,s,t) := fn in s.        
     
     Definition QLe (a b: Q): bool :=
         match Qlt_le_dec b a with
@@ -561,7 +564,7 @@ Module PR (T:T).
 
     Definition has_excess_not_sink fn f v  :=
         let '((vs, es),c,s,t) := fn in
-        if T.eqb v t then
+        if T.eqb v t || T.eqb v s then
             false
         else if 0 <? excess fn f v then 
             true
@@ -577,13 +580,13 @@ Module PR (T:T).
         | RelabelFailed
         .
 
-    Fixpoint gpr_helper_trace fn f l ac g tr : (option (@EMap.t Q 0)*list Tr) :=
+    Fixpoint gpr_helper_trace fn f l ac g tr: (option (@EMap.t Q 0*@NMap.t nat O)*list Tr) :=
         let '((vs, es),c,s,t) := fn in
         match g with
         | O => (None, OutOfGas::tr)
         | S g' => 
             match VSet.choice ac with
-            | None => (Some f,tr)
+            | None => (Some (f,l),tr)
             | Some (u,ac') =>
             match find_push_node fn f l u vs with
             | Some v =>
@@ -612,7 +615,7 @@ Module PR (T:T).
             | O => (None, OutOfGas::tr)
             | S g' => 
                 match VSet.choice ac with
-                | None => (Some f,tr)
+                | None => (Some (f,l),tr)
                 | Some (u,ac') =>
                 match find_push_node fn f l u vs with
                 | Some v =>
@@ -658,7 +661,7 @@ Module PR (T:T).
 
 
     Local Open Scope NMap.
-    Definition gpr_trace (fn:FlowNet) : (option (@EMap.t Q 0)*list Tr) :=
+    Definition gpr_trace (fn:FlowNet): (option (@EMap.t Q 0*@NMap.t nat O)*list Tr) :=
         let '((vs, es),c,s,t) := fn in
         let labels := NMap.replace s (length vs) (NMap.empty O) in
         let bound := (length es * length vs * length vs)%nat in
@@ -1139,12 +1142,14 @@ Module PR (T:T).
         Qed.
 
     Lemma HENSCondition fn v :forall (f:@EMap.t Q 0),
-        has_excess_not_sink fn f v = true -> 0 < excess fn f v /\ v <> sink fn.
+        has_excess_not_sink fn f v = true -> 0 < excess fn f v /\ v <> sink fn /\ v <> source fn.
     Proof.
         unfold has_excess_not_sink. destruct fn as [[[[vs es] c] s] t].
-        intros. destruct (equal v t) in H. subst.
+        intros. destruct (equal v t), (equal v s)  in H. subst.
         + inversion H.
-        + destruct_guard_in H.
+        + inversion H.
+        + inversion H.
+        + cbn in H. destruct_guard_in H.
         - eapply (reflect_iff _ _ (QLt_spec _ _)) in E0. split; auto.
         - inversion H. 
     Qed.
@@ -1205,15 +1210,16 @@ Module PR (T:T).
         Qed. 
 
     Lemma HENSConditionFalse fn v :forall (f:@EMap.t Q 0),
-        has_excess_not_sink fn f v = false -> 0 >= excess fn f v \/ v = sink fn.
+        has_excess_not_sink fn f v = false -> 0 >= excess fn f v \/ v = sink fn \/ v = source fn.
     Proof.
         unfold has_excess_not_sink.
         intros. destruct fn as [[[[vs es] c] s] t].
-        destruct (equal v t). subst.
-        + clear H. right. auto.
+        destruct (equal v t), (equal v s); subst; auto.
+        destruct_guard_in H.
+        + inversion E0.
         + destruct_guard_in H.
-        - inversion H.
-        - clear H. apply QLt_false in E0. tauto.
+        - inversion H. 
+        - simpl. apply QLt_false in E1. tauto.
         Qed.
 
     Lemma PushNoSteepArc fn f l x y:
@@ -1326,16 +1332,17 @@ Module PR (T:T).
         NoSteepArc fn f l ->
         (forall n, n ∈v ac = true -> n ∈v vs = true) ->
         ValidLabeling fn f l ->
-        (forall n, n ∈v ac = true <-> (ActiveNode fn f n /\ n<>t)) ->
+        (forall n, n ∈v ac = true <-> (ActiveNode fn f n /\ n<>t /\ n<>s)) ->
         PreFlowCond fn f ->
         FlowMapPositiveConstraint fn f ->
-        forall f' tr', 
-        gpr_helper_trace fn f l ac g tr = (Some f',tr') ->
-        (forall n, ActiveNode fn f' n -> n=t) /\ 
-        FlowConservationConstraint fn f'.
+        forall f' l' tr', 
+        gpr_helper_trace fn f l ac g tr = (Some (f', l'),tr') ->
+        (forall n, ActiveNode fn f' n -> n=t \/ n=s) /\ 
+        FlowConservationConstraint fn f' /\
+        l[s] = l'[s] /\ l[t]=l'[t].
     Proof.        
         destruct fn as [[[[vs es] c] s] t]. induction g;
-        intros f l ac tr Heisn Hvs Hac Hrcn Hnsa Hnvs Hvl Han Hprc Hfmpc f' tr' H.
+        intros f l ac tr Heisn Hvs Hac Hrcn Hnsa Hnvs Hvl Han Hprc Hfmpc f' l' tr' H.
         + simpl in H. inversion H.
         + rewrite gpr_helper_trace_fn in H. destruct_guard_in H.
         - destruct p. destruct_guard_in H.
@@ -1440,17 +1447,29 @@ Module PR (T:T).
         * destruct_guard_in H.
         ** eapply VSet.choiceSome in E0; auto. destruct E0, H1.
          eapply IHg in H; eauto.
+        *** split; try tauto. split; try tauto.
+            destruct H, H3, H4. rewrite <- H4, <- H5. subst.
+            unfold relabel in E2. destruct_guard_in E2; [|inversion E2]. inv_clear E2.
+            destruct (equal s v).
+        **** subst. exfalso. apply Han in H0. destruct H0, H0, H1. destruct H7. auto.
+        **** rewrite NMap.FindReplaceNeq; auto. split; auto.
+            destruct (equal t v). 
+        ***** subst. exfalso. apply Han in H0. destruct H0. destruct H1; auto.
+        ***** rewrite NMap.FindReplaceNeq; auto.
         *** eapply RelabelNoSteepArc; eauto.
         *** eapply (RelabelValidLabel (vs, es, c, s, t)); eauto. 
         unfold relabel in E2. destruct_guard_in E2; [| inversion E2].
         eapply RelabelValidCondition; eauto.
         **** apply Han. auto.
-        ** inversion H.
+        ** inversion H. 
         - apply VSet.choiceNone in E0. subst. inv_clear H. split.
-        * intros. destruct (equal n t); auto. assert (n ∈v VSet.empty = true).
+        * intros. destruct (equal n t); auto. 
+        destruct (equal n s); subst; try tauto.
+        assert (n ∈v VSet.empty = true).
         ** eapply Han. tauto.
         ** simpl in H0. inversion H0.
-        * unfold FlowConservationConstraint. intros. unfold PreFlowCond in Hprc.
+        * split; try tauto.
+         unfold FlowConservationConstraint. intros. unfold PreFlowCond in Hprc.
         destruct Hprc. unfold NonDeficientFlowConstraint in H3.
         apply H3 in H as P; auto. clear IHg. 
         destruct (Qeq_bool (excess (vs, es, c, s, t) f' v) 0) eqn : E.
@@ -1552,14 +1571,14 @@ Module PR (T:T).
         (excess fn f s <= 0) ->
         ResCapNodes fn f ->
         (forall n, n ∈v ac = true -> n ∈v vs = true) ->
-        (forall n, n ∈v ac = true <-> (ActiveNode fn f n /\ n<>t)) ->
+        (forall n, n ∈v ac = true <-> (ActiveNode fn f n /\ n<>t /\ n<>s)) ->
         PreFlowCond fn f ->
         FlowMapPositiveConstraint fn f ->
         initial_push fn f ac es' = (f',ac') ->
         VSet.IsSet ac' /\
         ResCapNodes fn f' /\
         (forall n, n ∈v ac' = true -> n ∈v vs = true) /\
-        (forall n, n ∈v ac' = true <-> (ActiveNode fn f' n /\ n<>t)) /\
+        (forall n, n ∈v ac' = true <-> (ActiveNode fn f' n /\ n<>t /\ n<>s)) /\
         PreFlowCond fn f' /\
         FlowMapPositiveConstraint fn f'.
     Proof.
@@ -1571,6 +1590,7 @@ Module PR (T:T).
         - apply Hrcn in H. tauto.
         - eapply Hactn, H.
         - eapply Hactn, H.
+        - intros. eapply Hactn in H. apply H.
         - intros. eapply Hactn in H. apply H.
         - destruct Hpfc; auto.
         - destruct Hpfc; auto.
@@ -1657,9 +1677,11 @@ Module PR (T:T).
         ***** destruct (equal n v0).
         ****** subst. destruct E0.
         ******* set (e := excess _) in *. lra.
-        ******* contradiction.
+        ******* destruct H4.  
+        ******** destruct H1. contradiction. 
+        ******** destruct H1. contradiction.
         ****** eapply (ExcessSame vs es c v t) with (n := n) in H3; eauto.
-        set (e := excess _) in *. lra.
+         set (e := excess _) in *. lra.
         * unfold PreFlowCond. unfold CapacityConstraint, NonDeficientFlowConstraint.
         split; intros.
         ** destruct (Edge.equal (u, v1) (v, v0)).
@@ -1742,16 +1764,21 @@ Module PR (T:T).
         (forall u v, ((u, v) ∈e es = true) -> (u ∈v vs) = true /\ (v ∈v vs) = true) ->
         VSet.IsSet vs ->
         (forall u v, c u v >= 0) ->
-        forall f' tr', 
-        gpr_trace fn = (Some f',tr') ->
-        (forall n, ActiveNode fn f' n -> n=t) /\ 
-        FlowConservationConstraint fn f'.
+        s<>t ->
+        forall f' l' tr', 
+        gpr_trace fn = (Some (f',l'),tr') ->
+        (forall n, ActiveNode fn f' n -> n=t \/ n=s) /\ 
+        FlowConservationConstraint fn f'/\
+        length vs = l'[s] /\ O=l'[t].
     Proof.
-        destruct fn as [[[[vs es] c] s] t]. intros. unfold gpr_trace in H2.
+        destruct fn as [[[[vs es] c] s] t]. 
+        intros H H0 H1 Hst f' l' tr' H2. unfold gpr_trace in H2.
         destruct_guard_in H2. 
         eapply (InitialGpr (vs, es, c, s, t)) in E0 as P; eauto.
         + destruct P, H4, H5, H6, H7. 
         eapply (FlowConservationGpr (vs, es, c, s, t)) in H2; eauto.
+        - destruct H2, H9, H10. split; auto. split; auto.
+        simpl in H10, H11. rewrite eqb_refl in H10. rewrite eqb_neq in H11; auto. 
         - simpl. unfold NoSteepArc. intros. simpl. destruct (equal u s).
         * subst. eapply InitialPushResCap0 with (e' := nil) (v := v) in E0.
         ** set (r := res_cap _) in *. lra.
