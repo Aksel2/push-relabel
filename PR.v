@@ -55,6 +55,7 @@ Module Map (T:T) <: MapSpec (T).
     
     Definition empty {e:Type} d: @t e d := nil.
 
+    (* Eemaldab tipu v järjendist xs, kui see seal leidub *)
     Fixpoint remove {e:Type} {d} (v:V) (xs: @t e d) : @t e d :=
         match xs with 
         | nil => nil
@@ -65,6 +66,7 @@ Module Map (T:T) <: MapSpec (T).
                 (u,y)::(@remove e d v xs)
         end.
 
+    (* Asendab tipu v järjendis xs*)
     Fixpoint replace {e:Type} {d} (v:V) (x:e) (xs:@t e d) := 
         match xs with
         | nil => (v,x)::nil
@@ -75,6 +77,7 @@ Module Map (T:T) <: MapSpec (T).
                 (u,y)::(@replace e d v x xs)
         end.
 
+    (*  *)
     Fixpoint update {e:Type} {d} (v:V) (f:e->e) (xs:@t e d) := 
         match xs with
         | nil => (v,f d)::nil
@@ -960,7 +963,7 @@ Module PR (T:T).
             - intros v0 _ q. inversion q. subst. apply H1. auto. 
         Qed.
 
-
+    
     Lemma DeltaPositive fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u v:
         let '((vs, es),c,s,t) := fn in
         (u ∈v vs) = true -> 
@@ -1052,9 +1055,7 @@ Module PR (T:T).
         * intro C. inv_clear C. apply n. reflexivity.
         Qed.
 
-    (* pikk tõestus paljude hargnemistega. 
-        * Qmin-ist saab lahti kasutades Q.min_spec 
-        * summade puhul Sum* (enne vastavad destruct (equal x y)...) *)
+    (* Eelvoo tingimused on säilitatud ka peale push sammu. *)
     Lemma PushPreFlow fn (f:@EMap.t Q 0) (l:@NMap.t nat O) x y:
         let '((vs, es),c,s,t) := fn in
         VSet.IsSet vs ->
@@ -1130,7 +1131,7 @@ Module PR (T:T).
         *** intros. intro C. inv_clear C. apply n. reflexivity.
         Qed.
 
-
+    (* *)
     Lemma FPNinVs fn f l u v vs': 
     find_push_node fn f l u vs' = Some v -> (v ∈v vs') = true.
     Proof.
@@ -1154,6 +1155,7 @@ Module PR (T:T).
         - inversion H. 
     Qed.
 
+    (* *)
     Lemma PushActiveInv (fn:FlowNet) (f:@EMap.t R 0) (l:@NMap.t nat O) u v x:
         VSet.IsSet (nodes fn) ->
         u ∈v nodes fn = true ->
@@ -1189,7 +1191,8 @@ Module PR (T:T).
         * intros. intro C. inv_clear C. apply H2. reflexivity.
         * intros. intro C. inv_clear C. apply n. reflexivity.
         Qed.
-        
+    
+    (* *)
     Lemma FPNConditionNone fn f l u vs': 
         find_push_node fn f l u vs' = None -> 
         forall v, v ∈v vs' = true -> (0 <? res_cap fn f u v = false) 
@@ -1222,6 +1225,7 @@ Module PR (T:T).
         - simpl. apply QLt_false in E1. tauto.
         Qed.
 
+    (* *)
     Lemma PushNoSteepArc fn f l x y:
         (x ∈v nodes fn) = true -> 
         FlowMapPositiveConstraint fn f ->
@@ -1253,6 +1257,7 @@ Module PR (T:T).
         apply H3. unfold res_cap. rewrite E2. auto.
         Qed.
 
+    (* *)
     Lemma PushResCapNodes fn f x y:        
         x ∈v (nodes fn) = true -> y ∈v (nodes fn) = true ->
         ResCapNodes fn f -> ResCapNodes fn (push fn f x y).
@@ -1280,6 +1285,7 @@ Module PR (T:T).
         apply H1. unfold res_cap. rewrite E2. auto.
         Qed.
     
+    (* *)
     Lemma RelabelNoSteepArc fn f l x:
         (x ∈v nodes fn) = true -> 
         ResCapNodes fn f ->
@@ -1303,7 +1309,7 @@ Module PR (T:T).
         apply H2 in H4. apply H2 in E1. lia.
         + rewrite NMap.FindReplaceNeq; auto. rewrite NMap.FindReplaceNeq; auto.
         Qed.
-
+    (* *)
     Lemma RelabelValidCondition fn f l u : 
         ActiveNode fn f u ->
         NoSteepArc fn f l ->
@@ -1323,6 +1329,8 @@ Module PR (T:T).
         + lia.
         Qed.
 
+    (* Siis kui gpr_helper_trace tagastab voo f' ja kõrgused l', siis ainukesed aktiivsed tipud on sisend või väljund,
+     täidetud on voo nõuded ja sisendi ning väljundi kõrgused on samad, mis alguses ehk invariante ei rikuta.  *)
     Lemma FlowConservationGpr fn g:forall (f:@EMap.t Q 0) (l:@NMap.t nat O) ac tr,
         let '((vs, es),c,s,t) := fn in
         (forall u v, ((u, v) ∈e es = true) -> (u ∈v vs) = true /\ (v ∈v vs) = true) ->
@@ -1479,7 +1487,7 @@ Module PR (T:T).
         *** inversion H4.
         Qed.
 
-    (* sama nagu SumSameUpdate *)
+    (* *)
     Lemma SumSameReplace (f:@EMap.t Q 0) (s:V->V*V) vs u v d : 
         (forall v0, v0 ∈v vs = true -> s v0 <> (u, v)) ->
         map (fun v0 => @EMap.find Q 0 
@@ -1496,7 +1504,7 @@ Module PR (T:T).
         - intros. apply H. cbn. destruct_guard; auto.
         Qed.
 
-    (* equal y s, siis equal n y, siis equal a s  *)
+    (*  *)
     Lemma NDFinitial vs es c s t d  y n f: 
         EMap.find f (s,y) <= d ->
         n<>s ->
@@ -1521,7 +1529,7 @@ Module PR (T:T).
         * intro C. inv_clear C. auto.
         Qed.
 
-    (* ind. üle vs *)
+    (* *)
     Lemma SourceDeficient vs es c s t y f: 
         (forall a, @EMap.find R 0 f (a,s) <= @EMap.find R 0 f (s,a)) ->
         EMap.find f (s,y) <= c s y ->
@@ -1542,7 +1550,7 @@ Module PR (T:T).
         ** auto.
         Qed.
 
-    (* väga lühike, kuna võrratused antud. Ind. üle vs.  *)
+    (*  *)
     Lemma ExcessSame vs es c s t y f n: 
         (forall a, EMap.find f (a,s) <= EMap.find f (s,a)) ->
         EMap.find f (s,y) <= c s y ->
@@ -1559,7 +1567,8 @@ Module PR (T:T).
        - intro C. inv_clear C. auto.
        Qed.
 
-    (* induktsioon üle es'  *)
+    (* Kui peale initsialiseerimist on aktiivsete tippude hulgas tipud, mis ei ole sisend ega väljund ja on täidetud eelvoo nõuded
+     ja vood ning läbilaskevõimed on mitte negatiivsed*)
     Lemma InitialGpr fn :
         let '((vs, es),c,s,t) := fn in
         (forall u v, ((u, v) ∈e es = true) -> (u ∈v vs) = true /\ (v ∈v vs) = true) ->
@@ -1702,9 +1711,7 @@ Module PR (T:T).
         Qed.
 
 
-    (* e' on juba töödeldud servade hulk.
-       induktsioon üle e'', 
-        kui e'' = a::e''', siis kasuta ihs (e':= add a e')  *)
+    (* Peale initsialiseerimist on kõik sisendist väljuvate servade läbilaskevõime ära kasutatud *)
     Lemma InitialPushResCap0 vs es c s t e'' : forall e' f f' ac ac',
         (forall e, (e ∈e e' = true \/ e ∈e e'' = true) <-> e ∈e es = true) ->
         (forall v, (s,v) ∈e es = false -> res_cap (vs,es,c,s,t) f s v == 0) ->
@@ -1758,7 +1765,8 @@ Module PR (T:T).
         ** intro C. inv_clear C. destruct n. auto.
         Qed.
 
-    (* rakenda InitialGpr ja InitialPushResCap0, kus e'=nil  *)
+    (* Kui gpr_trace tagastab voo f' ja kõrgused l', siis aktiivsed tipud on ainult sisend või väljund,
+     on täidetud voo nõuded ja on säilitatud invariandid, et sisendi kõrgus on võrdne tippude arvuga ja väljundi kõrgus on 0 *)
     Lemma FlowConservationGprMain fn (l:@NMap.t nat O):
         let '((vs, es),c,s,t) := fn in
         (forall u v, ((u, v) ∈e es = true) -> (u ∈v vs) = true /\ (v ∈v vs) = true) ->
@@ -1874,3 +1882,22 @@ Compute (@PRNat.excess FN2 [(0, 1, 10%Q); (0, 3, 4%Q); (3, 4, 7%Q); (
     4, 1, 0%Q); (1, 2, 10%Q); (2, 5, 7%Q); (
     4, 5, 7%Q); (2, 3, 3%Q)] 5).
 
+
+Definition FN3 : PRNat.FlowNet := 
+    let c := fun (x y: nat) => 
+        match x, y with
+        | 0, 1 => 5%Q
+        | 0, 2 => 3%Q
+        | 1, 3 => 4%Q
+        | 1, 4 => 3%Q
+        | 2, 4 => 9%Q
+        | 3, 5 => 20%Q
+        | 4, 5 => 2%Q
+        | _, _ => 0%Q
+        end
+    in
+    (([0;1;2;3;4;5],[(0,1);(0,2);(1,3);(1,4);(2,4);(3,5);(4,5)]),c,0,5).
+
+Compute (PRNat.gpr_trace FN3).
+Compute (@PRNat.excess FN3 [(0, 1, 4%Q); (0, 2, 2%Q); 
+(2, 4, 2%Q); (4, 5, 2%Q); (1, 3, 4%Q); (3, 5, 4%Q)] 5).
