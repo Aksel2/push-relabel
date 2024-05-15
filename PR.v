@@ -77,7 +77,7 @@ Module Map (T:T) <: MapSpec (T).
                 (u,y)::(@replace e d v x xs)
         end.
 
-    (* Uuendab tipust väljuvaid servasid *)
+    (* Uuendab tipust väljuvaid servasid, kui antud tipp leidub xs-is *)
     Fixpoint update {e:Type} {d} (v:V) (f:e->e) (xs:@t e d) := 
         match xs with
         | nil => (v,f d)::nil
@@ -88,7 +88,6 @@ Module Map (T:T) <: MapSpec (T).
                 (u,y)::(@update e d v f xs)
         end.
     
-    (*  *)
     Fixpoint find {e:Type} {d} (xs:@t e d) (v:V) := 
         match xs with
         | nil => d
@@ -99,7 +98,7 @@ Module Map (T:T) <: MapSpec (T).
                 @find e d xs v
         end.
 
-    (* Kui järjendist xs eemaldada tipp u, mis leidub xs-is, siis peale remove operatsiooni, xs-is seda enam seal ei leidu*)
+    (* Kui järjendist xs eemaldada tipp u, mis leidub xs-is, siis peale remove operatsiooni xs-is seda enam ei leidu*)
     Lemma FindRemoveEq {e d} {f:e->e} (xs:@t e d) u  :  
         @find e d (remove u xs) u = d.
     Proof.
@@ -111,7 +110,7 @@ Module Map (T:T) <: MapSpec (T).
         * simpl. rewrite -> eqb_neq; auto.
         Qed.
 
-    (*  *)
+    (* Kui xs-is ei leidu tippu u, siis peale remove operatsiooni seda samuti seal ei leidu *)
     Lemma FindRemoveNeq {e d} (xs:@t e d) u v  : u<>v -> 
         @find e d (remove v xs) u = @find e d xs u .
     Proof.
@@ -123,6 +122,7 @@ Module Map (T:T) <: MapSpec (T).
         + simpl. rewrite -> IHxs. reflexivity.
         Qed. 
 
+    (* Update operatsioon uuendab *)
     Lemma FindUpdateEq {e d} {f:e->e} (xs:@t e d) u  :
         @find e d (update u f xs) u = f (@find e d xs u) .
     Proof.
@@ -673,7 +673,9 @@ Module PR (T:T).
     Proof. destruct g; auto. Qed.
 
     Local Close Scope NMap.
-    (* Teeb push-relabel algoritmi initsialiseerimise ühe sammu, milleks on sisendtipust väljuvatele servadele voo saatmine, kasutades ära serva kogu läbilaskevõime *)
+
+    (* Teeb push-relabel algoritmi initsialiseerimise ühe sammu, milleks on 
+    sisendtipust väljuvatele servadele voo saatmine, kasutades ära serva kogu läbilaskevõime. *)
     Fixpoint initial_push fn f ac es: (@EMap.t Q 0*list V) :=
         let '((_, _),c,s,t) := fn in
         match es with
@@ -715,7 +717,7 @@ Module PR (T:T).
         forall u v, ESet.mem (u,v) es = true -> 
             f[(u,v)] <= c u v.
     
-    (* Igas tipus on ülejääk mitte negatiivne *)
+    (* Igas tipus, mis ei ole sisend on ülejääk mittenegatiivne *)
     Definition NonDeficientFlowConstraint (fn:FlowNet) (f:@EMap.t Q 0) := 
         let '((vs, es),c,s,t) := fn in
         forall v, (v ∈v vs) = true -> v<>s -> 0 <= excess fn f v.
@@ -729,7 +731,7 @@ Module PR (T:T).
     Definition PreFlowCond (fn:FlowNet) (f:@EMap.t Q 0) := 
             CapacityConstraint fn f /\ NonDeficientFlowConstraint fn f. 
 
-    (* Voog ja läbilaskevõime saab ainult olla mitte negatiivne *)
+    (* Voog ja läbilaskevõime saab ainult olla mittenegatiivne *)
     Definition FlowMapPositiveConstraint (fn:FlowNet) (f:@EMap.t Q 0) := 
         let '((vs, es),c,s,t) := fn in
         forall u v, f[(u,v)] >= 0 /\ c u v >= 0.
@@ -762,7 +764,7 @@ Module PR (T:T).
         forall u v,
         res_cap fn f u v > 0 -> (l[u] <= l[v]+1)%nat.
 
-    (* Iga tipu u ja v korral, kus on servade vahel läbilaskevõime olemas, siis need tipud kuuluvad transpordivõrku *)
+    (* Iga tipu u ja v korral kui on täidetud tingimus cf (u, v) > 0, siis need tipud u ja v kuuluvad transpordivõrku *)
     Definition ResCapNodes (fn:FlowNet) (f:@EMap.t Q 0) :=
             forall u v,
             res_cap fn f u v > 0 -> u ∈v (nodes fn) = true /\ v ∈v (nodes fn) = true.
@@ -802,7 +804,6 @@ Module PR (T:T).
         apply H. apply ESet.filter_in; auto.
         Qed.
 
-    (* Täidetud on relabel sammu eeldused *)
     Definition RelabelCondition fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u := 
       excess fn f u > 0 /\ forall v, v ∈v (nodes fn) = true -> res_cap fn f u v > 0 -> (l[u] <= l[v])%nat.
 
@@ -810,7 +811,6 @@ Module PR (T:T).
     Lemma minProp: forall a b, (min a b = a /\ a <= b)%nat \/ 
                                 (min a b = b /\ b <= a)%nat.
     Proof. lia. Qed. 
-
 
     Lemma RFindResCapCondition fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u vs : forall vs' v,
         (VSet.filter (fun v0 : V => 0 <? res_cap fn f u v0) vs) = vs' ->
@@ -913,7 +913,6 @@ Module PR (T:T).
         ** auto.
         Qed. 
 
-
     Lemma RFindCondition fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u vs: forall v, 
       relabel_find fn f l u vs = Some v  ->
       (0 <? res_cap fn f u v) = true /\ (forall v', (v' ∈v vs) = true 
@@ -966,7 +965,8 @@ Module PR (T:T).
         + auto.
     Qed.
 
-
+    (* Kui tippudel on korrektsed kõrgused ning leidub aktiivseid tippe ja leidub tipp kuhu saab push sammu teha, siis järledub, et 
+    on täidetud push sammu eeldused. *)
     Lemma FPNCondition fn f l u vs': 
         (u ∈v nodes fn) = true -> forall v, 
         ValidLabeling fn f l -> ActiveNode fn f u ->
@@ -1108,7 +1108,7 @@ Module PR (T:T).
         * intro C. inv_clear C. apply n. reflexivity.
         Qed.
 
-    (* Kui on rahuldatud eelvoo tingimused ning vood ja läbilaskevõimed on mitte negatiivsed 
+    (* Kui on rahuldatud eelvoo tingimused ning vood ja läbilaskevõimed on mittenegatiivsed 
     ja leidub tipp, kuhu saab push sammu teha, siis järeldub, et ka peale push sammu on eelvoo tingimused säilitatud *)
     Lemma PushPreFlow fn (f:@EMap.t Q 0) (l:@NMap.t nat O) x y:
         let '((vs, es),c,s,t) := fn in
@@ -1379,23 +1379,38 @@ Module PR (T:T).
         Qed.
 
     (* Siis kui gpr_helper_trace tagastab voo f' ja kõrgused l', siis järeldub, et ainukesed aktiivsed tipud on sisend või väljund,
-     täidetud on voo nõuded ja sisendi ning väljundi kõrgused on samad, mis alguses ehk invariante ei rikuta.  *)
+     täidetud on voo säilivus nõue ja sisendi ning väljundi kõrgused on samad, mis alguses ehk invariante ei rikuta.  *)
     Lemma FlowConservationGpr fn g:forall (f:@EMap.t Q 0) (l:@NMap.t nat O) ac tr,
         let '((vs, es),c,s,t) := fn in
+        (* Iga tipp u ja v korral, kui nende vahel on serv, siis need tipud kuuluvad tippude hulka*)
         (forall u v, ((u, v) ∈e es = true) -> (u ∈v vs) = true /\ (v ∈v vs) = true) ->
+        (* Tippude hulk vs on hulk*)
         VSet.IsSet vs ->
+        (* Aktiivstete tippude hulk ac on hulk*)
         VSet.IsSet ac ->
+        (* Leidub tippusid, mille vahel on läbilaskevõime *)
         ResCapNodes fn f ->
+        (* Täidetud on invariant h(u) <= h(v) + 1 *)
         NoSteepArc fn f l ->
+        (* Iga tipp n korral, kui n kuulub aktiivsete tippude hulka, siis n kuulub ka tippude hulka*)
         (forall n, n ∈v ac = true -> n ∈v vs = true) ->
+        (* Graafis on säilitatud korrektsed kõrgused *)
         ValidLabeling fn f l ->
+        (* Iga tipp n korral, kui n kuulub aktiivsete tippude hulka, siis see on ekvivalentne sellega, et tipus n on ülejääk ja 
+        tipp n pole sisend ega väljund*)
         (forall n, n ∈v ac = true <-> (ActiveNode fn f n /\ n<>t /\ n<>s)) ->
+        (* Täidetud on eelvoo tingimused *)
         PreFlowCond fn f ->
+        (* Vood ja läbilaskevõimed on mittenegatiivsed *)
         FlowMapPositiveConstraint fn f ->
+        (* gpr_helper_trace tagastab voo f' ja kõrgsued l', siis sellest järeldub, et*)
         forall f' l' tr', 
         gpr_helper_trace fn f l ac g tr = (Some (f', l'),tr') ->
-        (forall n, ActiveNode fn f' n -> n=t \/ n=s) /\ 
+        (* Iga tipu n korral, mis on aktiivne on n väljund või sisend*)
+        (forall n, ActiveNode fn f' n -> n=t \/ n=s) /\
+        (* Täidetud on voo säilivuse nõue*)
         FlowConservationConstraint fn f' /\
+        (* Sisendi ja väljundi kõrgus on funktsiooni gpr_helper_trace lõpus sama, mis oli alguses *)
         l[s] = l'[s] /\ l[t]=l'[t].
     Proof.        
         destruct fn as [[[[vs es] c] s] t]. induction g;
@@ -1612,22 +1627,35 @@ Module PR (T:T).
        - intro C. inv_clear C. auto.
        Qed.
 
-    (* Kui peale initsialiseerimist on aktiivsete tippude hulgas tipud, mis ei ole sisend ega väljund ja on täidetud eelvoo nõuded
-     ja vood ning läbilaskevõimed on mitte negatiivsed*)
+    (* Peale initsialiseerimist on aktiivsete tippude hulgas tipud, mis ei ole sisend ega väljund ja on täidetud eelvoo nõuded
+     ja vood ning läbilaskevõimed on mittenegatiivsed*)
     Lemma InitialGpr fn :
         let '((vs, es),c,s,t) := fn in
+        (* Iga tipp u ja v korral, kui nende vahel on serv, siis need tipud kuuluvad tippude hulka*)
         (forall u v, ((u, v) ∈e es = true) -> (u ∈v vs) = true /\ (v ∈v vs) = true) ->
+        (* Tippude hulk vs on hulk*)
         VSet.IsSet vs ->
         forall es' f f' ac ac' ,
         (forall n, n ∈e es' = true -> n ∈e es = true) ->
+        (* Aktiivsete tippude hulk ac on hulk *)
         VSet.IsSet ac ->
+        (*Iga tipu a korral otsitakse, kas leidub serv (a, s) ja serv (s, a)*)
         (forall a, EMap.find f (a,s) <= EMap.find f (s,a)) ->
+        (* sisendi ülejääk ei ole positiivne*)
         (excess fn f s <= 0) ->
+        (* Leidub tippusid, mille vahel on läbilaskevõime *)
         ResCapNodes fn f ->
+        (* Iga tipp n korral, kui n kuulub aktiivsete tippude hulka, siis n kuulub ka tippude hulka*)
         (forall n, n ∈v ac = true -> n ∈v vs = true) ->
+         (* Iga tipp n korral, kui n kuulub aktiivsete tippude hulka, siis see on ekvivalentne sellega, et tipus n on ülejääk ja 
+        tipp n pole sisend ega väljund*)
         (forall n, n ∈v ac = true <-> (ActiveNode fn f n /\ n<>t /\ n<>s)) ->
+        (* Täidetud on eelvoo tingimused *)
         PreFlowCond fn f ->
+        (* Vood ja läbilaskevõimed on mittenegatiivsed *)
         FlowMapPositiveConstraint fn f ->
+        (* Kui algoritmi initsialiseerimise samm, kus tehakse push samm sisendist väljuvate servade peal
+        tagastab voo f' ja aktiivsed tipud ac', siis sellest järeldub all olev konjuktsioon*)
         initial_push fn f ac es' = (f',ac') ->
         VSet.IsSet ac' /\
         ResCapNodes fn f' /\
@@ -1756,7 +1784,10 @@ Module PR (T:T).
         Qed.
 
 
-    (* Peale initsialiseerimist on kõik sisendist väljuvate servade läbilaskevõime ära kasutatud *)
+    (* Kui Iga serva e korral e kuulub hulka e' või e'', siis ta kuulub hulka es ja iga tipu v korral, kui puudub serv
+    (s, v), siis sellel serva läbilaskevõime on 0 ning 
+    iga tipu v korral, kui serv (s, v) kuulub hulka e', siis sellel serva läbilaskevõime on 0, sellest järeldub, et
+    peale initsialiseerimist on kõik sisendist väljuvate servade läbilaskevõime ära kasutatud *)
     Lemma InitialPushResCap0 vs es c s t e'' : forall e' f f' ac ac',
         (forall e, (e ∈e e' = true \/ e ∈e e'' = true) <-> e ∈e es = true) ->
         (forall v, (s,v) ∈e es = false -> res_cap (vs,es,c,s,t) f s v == 0) ->
@@ -1810,7 +1841,8 @@ Module PR (T:T).
         ** intro C. inv_clear C. destruct n. auto.
         Qed.
 
-    (* Kui gpr_trace tagastab voo f' ja kõrgused l', siis aktiivsed tipud on ainult sisend või väljund,
+    (* Kui tipud u ja v kuuluvad tippude hulka ning servade (u, v) läbilaskevõime on mittenegatiivne ja sisend pole väljund ning
+     gpr_trace tagastab voo f' ja kõrgused l', siis järeldub, et aktiivsed tipud on ainult sisend või väljund,
      on täidetud voo nõuded ja on säilitatud invariandid, et sisendi kõrgus on võrdne tippude arvuga ja väljundi kõrgus on 0 *)
     Lemma FlowConservationGprMain fn (l:@NMap.t nat O):
         let '((vs, es),c,s,t) := fn in
@@ -1899,6 +1931,8 @@ Module PRNat := PR (Nat).
 
 Import ListNotations.
 Open Scope nat.
+
+(* Näited, et algoritm tagastab korrektse maksimaalse voo*)
 Definition FN1 : PRNat.FlowNet := 
     let c := fun (x y: nat) => 10%Q in
     (([0;1],[(0,1)]),c,0,1).
