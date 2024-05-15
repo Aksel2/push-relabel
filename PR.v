@@ -98,7 +98,6 @@ Module Map (T:T) <: MapSpec (T).
                 @find e d xs v
         end.
 
-    (* Kui järjendist xs eemaldada tipp u, mis leidub xs-is, siis peale remove operatsiooni xs-is seda enam ei leidu*)
     Lemma FindRemoveEq {e d} {f:e->e} (xs:@t e d) u  :  
         @find e d (remove u xs) u = d.
     Proof.
@@ -110,7 +109,6 @@ Module Map (T:T) <: MapSpec (T).
         * simpl. rewrite -> eqb_neq; auto.
         Qed.
 
-    (* Kui xs-is ei leidu tippu u, siis peale remove operatsiooni seda samuti seal ei leidu *)
     Lemma FindRemoveNeq {e d} (xs:@t e d) u v  : u<>v -> 
         @find e d (remove v xs) u = @find e d xs u .
     Proof.
@@ -122,7 +120,6 @@ Module Map (T:T) <: MapSpec (T).
         + simpl. rewrite -> IHxs. reflexivity.
         Qed. 
 
-    (* Update operatsioon uuendab *)
     Lemma FindUpdateEq {e d} {f:e->e} (xs:@t e d) u  :
         @find e d (update u f xs) u = f (@find e d xs u) .
     Proof.
@@ -717,33 +714,33 @@ Module PR (T:T).
         forall u v, ESet.mem (u,v) es = true -> 
             f[(u,v)] <= c u v.
     
-    (* Igas tipus, mis ei ole sisend on ülejääk mittenegatiivne *)
+    (* Tagastab true, kui igas tipus v, mis ei ole sisend, on ülejääk mittenegatiivne *)
     Definition NonDeficientFlowConstraint (fn:FlowNet) (f:@EMap.t Q 0) := 
         let '((vs, es),c,s,t) := fn in
         forall v, (v ∈v vs) = true -> v<>s -> 0 <= excess fn f v.
 
-    (* Igas tipus v.a sisendis ja väljundis on ülejääk 0.  *)
+    (* Tagastab true kui igas tipus v.a sisendis ja väljundis on ülejääk 0.  *)
     Definition FlowConservationConstraint (fn:FlowNet) (f:@EMap.t Q 0) := 
         let '((vs, es),c,s,t) := fn in
         forall v, (v ∈v vs) = true -> v<>s -> v<>t -> excess fn f v == 0.
     
-    (* Täidetud on eelvoo nõuded *)
+    (* Tagastab true kui on täidetud eelvoo nõuded *)
     Definition PreFlowCond (fn:FlowNet) (f:@EMap.t Q 0) := 
             CapacityConstraint fn f /\ NonDeficientFlowConstraint fn f. 
 
-    (* Voog ja läbilaskevõime saab ainult olla mittenegatiivne *)
+    (* Tagastab true kui voog ja läbilaskevõime on mittenegatiivsed *)
     Definition FlowMapPositiveConstraint (fn:FlowNet) (f:@EMap.t Q 0) := 
         let '((vs, es),c,s,t) := fn in
         forall u v, f[(u,v)] >= 0 /\ c u v >= 0.
     
-    (* Tipp on aktiivne, kui see kuulub tippude hulka ja omab ülejääki *)
+    (* Tagastab true, kui tipp v on tippude hulgas ja omab ülejääki *)
     Definition ActiveNode (fn:FlowNet) (f:@EMap.t Q 0)v := 
         let '((vs, es),c,s,t) := fn in
         (v ∈v vs) = true /\ excess fn f v > 0.
     
     Local Open Scope NMap.
 
-    (* Iga tipu u ja v korral, kui serv (u ,v) kuulub servade hulka on tippudel u ja v korrektsed kõrgused *)
+    (* Tagastab true, kui iga tipu u ja v korral, kui serv (u ,v) kuulub servade hulka on tippudel u ja v korrektsed kõrgused *)
     Definition ValidLabeling  fn (f:@EMap.t Q 0) (l:@NMap.t nat O) :=
         forall u v,
         let '((vs, es),c,s,t) := fn in
@@ -759,21 +756,21 @@ Module PR (T:T).
         let '((vs, es),c,s,t) := fn in
         CPath fn f s t -> False.
 
-    (* Iga tipu u ja v korral kui on täidetud tingimus cf (u, v) > 0, siis l(u) <= l(v) + 1 *)
+    (* Tagastab true, kui iga tipu u ja v korral on täidetud tingimus cf (u, v) > 0, siis l(u) <= l(v) + 1 *)
     Definition NoSteepArc (fn:FlowNet) (f:@EMap.t Q 0) (l:@NMap.t nat O):=
         forall u v,
         res_cap fn f u v > 0 -> (l[u] <= l[v]+1)%nat.
 
-    (* Iga tipu u ja v korral kui on täidetud tingimus cf (u, v) > 0, siis need tipud u ja v kuuluvad transpordivõrku *)
+    (* Tagastab true iga tipu u ja v korral kui on täidetud tingimus cf (u, v) > 0 ja tipud u ja v kuuluvad transpordivõrku *)
     Definition ResCapNodes (fn:FlowNet) (f:@EMap.t Q 0) :=
             forall u v,
             res_cap fn f u v > 0 -> u ∈v (nodes fn) = true /\ v ∈v (nodes fn) = true.
 
-    (* Ei leidu tippu, kuhu saaks push sammu teha *)
+    (* Tagastab true, kui ei leidu tippu, kuhu saaks push sammu teha *)
     Definition NoPushCondition fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u := 
                 forall v, v ∈v (nodes fn) = true -> (l[u] <> l[v] + 1)%nat.
     
-    (* Push sammu eeldused on täidetud, et tipus on ülejääk ja järgmine tipp on 1 võrra madalamal *)
+    (* Tagastab true, kui push sammu eeldused on täidetud, ehk tipus on ülejääk ja järgmine tipp on 1 võrra madalamal *)
     Definition PushCondition fn (f:@EMap.t Q 0) (l:@NMap.t nat O) u v := 
         excess fn f u > 0 /\ (l[u] = l[v] + 1)%nat.
     
